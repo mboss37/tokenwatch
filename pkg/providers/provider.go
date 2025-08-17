@@ -31,6 +31,9 @@ type Provider interface {
 const (
 	Period7Days  = "7d"
 	Period30Days = "30d"
+	Period90Days = "90d"
+	Period1Year  = "1y"
+	PeriodAll    = "all"
 )
 
 // GetPeriodTimeRange returns start and end times for common periods
@@ -45,6 +48,12 @@ func GetPeriodTimeRange(period string) (time.Time, time.Time) {
 		startTime = endTime.AddDate(0, 0, -7) // Last 7 days
 	case "30d":
 		startTime = endTime.AddDate(0, 0, -30) // Last 30 days
+	case "90d":
+		startTime = endTime.AddDate(0, 0, -90) // Last 90 days
+	case "1y":
+		startTime = endTime.AddDate(0, 0, -365) // Last 1 year
+	case "all":
+		startTime = endTime.AddDate(0, 0, -1825) // Last 5 years (maximum practical limit)
 	default:
 		// Default to 7 days if period is not recognized
 		startTime = endTime.AddDate(0, 0, -7)

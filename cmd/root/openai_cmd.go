@@ -83,10 +83,14 @@ This command shows:
 
 Examples:
   tokenwatch usage                # Last 7 days
-  	tokenwatch usage --period 1d    # Last 24 hours
-	tokenwatch usage --period 30d   # Last 30 days
-	tokenwatch usage -w -p 1d       # Watch mode - refresh every 30s
-	tokenwatch usage -w -p 7d       # Watch mode with 7-day period`,
+        tokenwatch usage --period 1d    # Last 24 hours
+        tokenwatch usage --period 30d   # Last 30 days
+        tokenwatch usage --period 90d   # Last 90 days
+        tokenwatch usage --period 1y    # Last 1 year
+        tokenwatch usage --period all   # Last 5 years (maximum)
+        tokenwatch usage -w -p 1d       # Watch mode - refresh every 30s
+        tokenwatch usage -w -p 7d       # Watch mode with 7-day period
+        tokenwatch usage -w -p 90d      # Watch mode with 90-day period`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Load config
 		if err := config.Init(); err != nil {
@@ -161,7 +165,7 @@ Examples:
 }
 
 func init() {
-	usageCmd.Flags().StringP("period", "p", "7d", "Time period: 1d (recent activity), 7d (historical data), 30d")
+	usageCmd.Flags().StringP("period", "p", "7d", "Time period: 1d (recent activity), 7d (historical data), 30d, 90d, 1y, all")
 	usageCmd.Flags().BoolP("watch", "w", false, "Watch mode - refresh every 30 seconds")
 	usageCmd.Flags().BoolP("debug", "d", false, "Enable debug logging for API calls")
 	RootCmd.AddCommand(usageCmd)

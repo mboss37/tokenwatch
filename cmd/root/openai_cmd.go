@@ -98,8 +98,8 @@ Examples:
 				// Clear screen
 				fmt.Print("\033[H\033[2J")
 				
-				// Display data
-				if err := displayOpenAIData(provider, period); err != nil {
+				// Display data with cache bypassed for fresh data
+				if err := displayOpenAIData(provider, period, true); err != nil {
 					fmt.Printf("❌ Error: %v\n", err)
 				}
 				
@@ -111,7 +111,7 @@ Examples:
 			}
 		} else {
 			// Single run
-			return displayOpenAIData(provider, period)
+			return displayOpenAIData(provider, period, false)
 		}
 	},
 }
@@ -123,7 +123,7 @@ func init() {
 }
 
 // displayOpenAIData fetches and displays OpenAI usage data
-func displayOpenAIData(provider *providers.OpenAIProvider, period string) error {
+func displayOpenAIData(provider *providers.OpenAIProvider, period string, bypassCache bool) error {
 	// Display header
 	fmt.Printf("🤖 OPENAI USAGE - Last %s\n", period)
 	fmt.Printf("⏰ Generated: %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
@@ -132,13 +132,13 @@ func displayOpenAIData(provider *providers.OpenAIProvider, period string) error 
 	startTime, endTime := providers.GetPeriodTimeRange(period)
 
 	// Fetch consumption data
-	consumptions, err := provider.GetConsumption(startTime, endTime)
+	consumptions, err := provider.GetConsumption(startTime, endTime, bypassCache)
 	if err != nil {
 		return fmt.Errorf("failed to get consumption data: %w", err)
 	}
 
 	// Fetch pricing data
-	pricings, err := provider.GetPricing(startTime, endTime)
+	pricings, err := provider.GetPricing(startTime, endTime, bypassCache)
 	if err != nil {
 		// Don't fail if pricing data is unavailable - just log a warning
 		fmt.Printf("⚠️  Warning: Could not fetch pricing data: %v\n", err)

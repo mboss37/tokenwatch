@@ -69,7 +69,7 @@ type OpenAICostAmount struct {
 
 // NewOpenAIProvider creates a new OpenAI provider instance
 func NewOpenAIProvider(apiKey, orgID string) *OpenAIProvider {
-	// Default cache TTL of 5 minutes
+	// Default cache TTL of 5 minutes for normal operations
 	cacheTTL := 5 * time.Minute
 
 	// Rate limiting: OpenAI has various rate limits, using conservative defaults
@@ -100,9 +100,14 @@ func (o *OpenAIProvider) IsAvailable() bool {
 	return o.apiKey != ""
 }
 
+// ClearCache clears all cached data
+func (o *OpenAIProvider) ClearCache() {
+	o.cache = make(map[string]cacheItem)
+}
+
 // GetConsumption retrieves consumption data and converts to common models
-func (o *OpenAIProvider) GetConsumption(startTime, endTime time.Time) ([]*models.Consumption, error) {
-	usageResp, err := o.GetUsage(startTime, endTime, "1d", []string{"model"})
+func (o *OpenAIProvider) GetConsumption(startTime, endTime time.Time, bypassCache bool) ([]*models.Consumption, error) {
+	usageResp, err := o.GetUsage(startTime, endTime, "1d", []string{"model"}, bypassCache)
 	if err != nil {
 		return nil, err
 	}
@@ -127,8 +132,8 @@ func (o *OpenAIProvider) GetConsumption(startTime, endTime time.Time) ([]*models
 }
 
 // GetPricing retrieves pricing data and converts to common models
-func (o *OpenAIProvider) GetPricing(startTime, endTime time.Time) ([]*models.Pricing, error) {
-	costResp, err := o.GetCosts(startTime, endTime, []string{"line_item"})
+func (o *OpenAIProvider) GetPricing(startTime, endTime time.Time, bypassCache bool) ([]*models.Pricing, error) {
+	costResp, err := o.GetCosts(startTime, endTime, []string{"line_item"}, bypassCache)
 	if err != nil {
 		return nil, err
 	}
@@ -159,7 +164,7 @@ func (o *OpenAIProvider) GetPricing(startTime, endTime time.Time) ([]*models.Pri
 func (o *OpenAIProvider) GetConsumptionSummary(period string) (*models.ConsumptionSummary, error) {
 	startTime, endTime := GetPeriodTimeRange(period)
 
-	consumptions, err := o.GetConsumption(startTime, endTime)
+	consumptions, err := o.GetConsumption(startTime, endTime, false)
 	if err != nil {
 		return nil, err
 	}
@@ -188,7 +193,7 @@ func (o *OpenAIProvider) GetConsumptionSummary(period string) (*models.Consumpti
 func (o *OpenAIProvider) GetPricingSummary(period string) (*models.PricingSummary, error) {
 	startTime, endTime := GetPeriodTimeRange(period)
 
-	pricings, err := o.GetPricing(startTime, endTime)
+	pricings, err := o.GetPricing(startTime, endTime, false)
 	if err != nil {
 		return nil, err
 	}
@@ -272,7 +277,7 @@ func (o *OpenAIProvider) saveToCache(key string, data interface{}) {
 }
 
 // GetUsage retrieves token usage data from OpenAI (internal method)
-func (o *OpenAIProvider) GetUsage(startTime, endTime time.Time, bucketWidth string, groupBy []string) (*OpenAIUsageResponse, error) {
+func (o *OpenAIProvider) GetUsage(startTime, endTime time.Time, bucketWidth string, groupBy []string, bypassCache bool) (*OpenAIUsageResponse, error) {
 	// Create cache key
 	params := map[string]string{
 		"start_time":   fmt.Sprintf("%d", startTime.Unix()),
@@ -284,13 +289,15 @@ func (o *OpenAIProvider) GetUsage(startTime, endTime time.Time, bucketWidth stri
 	}
 	cacheKey := o.getCacheKey("usage", params)
 
-	// Try to get from cache
-	var result *OpenAIUsageResponse
-	if o.getFromCache(cacheKey, &result) {
-		return result, nil
+	// Try to get from cache (unless bypassing)
+	if !bypassCache {
+		var result *OpenAIUsageResponse
+		if o.getFromCache(cacheKey, &result) {
+			return result, nil
+		}
 	}
 
-	// Not in cache, make API request
+	// Not in cache or bypassing cache, make API request
 	url := fmt.Sprintf("%s/organization/usage/completions", o.baseURL)
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -354,7 +361,7 @@ func (o *OpenAIProvider) GetUsage(startTime, endTime time.Time, bucketWidth stri
 }
 
 // GetCosts retrieves cost data from OpenAI (internal method)
-func (o *OpenAIProvider) GetCosts(startTime, endTime time.Time, groupBy []string) (*OpenAICostResponse, error) {
+func (o *OpenAIProvider) GetCosts(startTime, endTime time.Time, groupBy []string, bypassCache bool) (*OpenAICostResponse, error) {
 	// Create cache key
 	params := map[string]string{
 		"start_time":   fmt.Sprintf("%d", startTime.Unix()),
@@ -366,13 +373,15 @@ func (o *OpenAIProvider) GetCosts(startTime, endTime time.Time, groupBy []string
 	}
 	cacheKey := o.getCacheKey("costs", params)
 
-	// Try to get from cache
-	var result *OpenAICostResponse
-	if o.getFromCache(cacheKey, &result) {
-		return result, nil
+	// Try to get from cache (unless bypassing)
+	if !bypassCache {
+		var result *OpenAICostResponse
+		if o.getFromCache(cacheKey, &result) {
+			return result, nil
+		}
 	}
 
-	// Not in cache, make API request
+	// Not in cache or bypassing cache, make API request
 	url := fmt.Sprintf("%s/organization/costs", o.baseURL)
 
 	req, err := http.NewRequest("GET", url, nil)
@@ -438,12 +447,12 @@ func (o *OpenAIProvider) GetLast7DaysUsage() (*OpenAIUsageResponse, error) {
 	endTime := time.Now()
 	startTime := endTime.AddDate(0, 0, -7)
 
-	return o.GetUsage(startTime, endTime, "1d", []string{"model"})
+	return o.GetUsage(startTime, endTime, "1d", []string{"model"}, false)
 }
 
 func (o *OpenAIProvider) GetLast30DaysCosts() (*OpenAICostResponse, error) {
 	endTime := time.Now()
 	startTime := endTime.AddDate(0, 0, -30)
 
-	return o.GetCosts(startTime, endTime, []string{"line_item"})
+	return o.GetCosts(startTime, endTime, []string{"line_item"}, false)
 }

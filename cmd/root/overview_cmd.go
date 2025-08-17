@@ -67,8 +67,8 @@ Examples:
 				// Clear screen
 				fmt.Print("\033[H\033[2J")
 				
-				// Display data
-				if err := displayAllPlatformsData(platforms, period); err != nil {
+				// Display data with cache bypassed for fresh data
+				if err := displayAllPlatformsData(platforms, period, true); err != nil {
 					fmt.Printf("❌ Error: %v\n", err)
 				}
 				
@@ -80,7 +80,7 @@ Examples:
 			}
 		} else {
 			// Single run
-			return displayAllPlatformsData(platforms, period)
+			return displayAllPlatformsData(platforms, period, false)
 		}
 	},
 }
@@ -92,7 +92,7 @@ func init() {
 }
 
 // displayAllPlatformsData fetches and displays combined platform data
-func displayAllPlatformsData(platforms []string, period string) error {
+func displayAllPlatformsData(platforms []string, period string, bypassCache bool) error {
 	fmt.Printf("🎯 TOKENWATCH ALL PLATFORMS - Last %s\n", period)
 	fmt.Printf("⏰ Generated: %s\n", time.Now().Format("2006-01-02 15:04:05"))
 	fmt.Printf("🔗 Period: %s\n\n", getPeriodDescription(period))
@@ -100,7 +100,7 @@ func displayAllPlatformsData(platforms []string, period string) error {
 	fmt.Printf("🚀 Fetching data from %d configured platform(s)...\n\n", len(platforms))
 
 	// Collect data from all platforms in parallel
-	results := collectPlatformDataParallel(platforms, period)
+	results := collectPlatformDataParallel(platforms, period, bypassCache) // Pass false for bypassCache
 
 	if len(results) == 0 {
 		fmt.Println("ℹ️  No data found for the specified period.")
@@ -140,7 +140,7 @@ type PlatformDataResult struct {
 }
 
 // collectPlatformDataParallel fetches data from all platforms concurrently
-func collectPlatformDataParallel(platforms []string, period string) []PlatformDataResult {
+func collectPlatformDataParallel(platforms []string, period string, bypassCache bool) []PlatformDataResult {
 	var wg sync.WaitGroup
 	results := make([]PlatformDataResult, 0, len(platforms))
 	resultChan := make(chan PlatformDataResult, len(platforms))
@@ -162,7 +162,7 @@ func collectPlatformDataParallel(platforms []string, period string) []PlatformDa
 
 			// Get detailed consumption data
 			startTime, endTime := providers.GetPeriodTimeRange(period)
-			consumptions, err := provider.GetConsumption(startTime, endTime)
+			consumptions, err := provider.GetConsumption(startTime, endTime, bypassCache)
 			if err != nil {
 				resultChan <- PlatformDataResult{
 					platform: p,
@@ -172,7 +172,7 @@ func collectPlatformDataParallel(platforms []string, period string) []PlatformDa
 			}
 
 			// Get detailed pricing data
-			pricings, err := provider.GetPricing(startTime, endTime)
+			pricings, err := provider.GetPricing(startTime, endTime, bypassCache)
 			if err != nil {
 				resultChan <- PlatformDataResult{
 					platform: p,

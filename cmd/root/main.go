@@ -1,0 +1,58 @@
+package main
+
+import (
+	"os"
+
+	"tokenwatch/internal/config"
+	"tokenwatch/pkg/utils"
+
+	"github.com/spf13/cobra"
+)
+
+var (
+	Version   = "dev"
+	BuildTime = "unknown"
+)
+
+var RootCmd = &cobra.Command{
+	Use:     "tokenwatch",
+	Version: Version,
+	Short:   "TokenWatch: Track LLM token consumption and pricing",
+	Long: `TokenWatch is a CLI tool for monitoring token usage and costs across LLM platforms like OpenAI and Grok.
+Modular design allows easy extension to more platforms.`,
+	CompletionOptions: cobra.CompletionOptions{
+		DisableDefaultCmd: true,
+	},
+}
+
+func Execute() error {
+	return RootCmd.Execute()
+}
+
+func init() {
+	// Initialize logger early
+	logLevel := utils.InfoLevel
+
+	// Try to load config to get debug setting
+	if err := config.Init(); err == nil {
+		if config.GetBool("settings.debug") {
+			logLevel = utils.DebugLevel
+		}
+		// Check environment variable
+		if envLevel := os.Getenv("TOKENWATCH_LOG_LEVEL"); envLevel != "" {
+			logLevel = utils.ParseLogLevel(envLevel)
+		}
+	}
+
+	// Initialize logger with color support for terminal
+	utils.InitLogger(logLevel, true)
+}
+
+func main() {
+	if err := Execute(); err != nil {
+		utils.Error("Command execution failed", map[string]interface{}{
+			"error": err.Error(),
+		})
+		os.Exit(1)
+	}
+}

@@ -109,8 +109,8 @@ Examples:
 		debug, _ = cmd.Flags().GetBool("debug")
 
 		// Validate period
-		if period != "" && period != "1d" && period != "7d" && period != "30d" {
-			return fmt.Errorf("invalid period: %s. Valid periods are: 1d, 7d, 30d", period)
+		if period != "" && period != "1d" && period != "7d" && period != "30d" && period != "90d" && period != "1y" && period != "all" {
+			return fmt.Errorf("invalid period: %s. Valid periods are: 1d, 7d, 30d, 90d, 1y, all", period)
 		}
 		if period == "" {
 			period = "7d"
@@ -121,9 +121,9 @@ Examples:
 		// return fmt.Errorf("watch mode (-w) is only available for 1-day period (--period 1d). For longer periods, use regular mode")
 		// }
 
-		// Warn about 30d period limitations
-		if period == "30d" {
-			fmt.Println("⚠️  Note: 30-day period may take longer to load and may have limited data availability due to OpenAI API limitations.")
+		// Warn about longer period limitations
+		if period == "30d" || period == "90d" || period == "1y" || period == "all" {
+			fmt.Println("⚠️  Note: Longer periods may take longer to load and may have limited data availability due to OpenAI API limitations.")
 			fmt.Println("   Consider using --period 7d for more reliable results.")
 			fmt.Println()
 		}

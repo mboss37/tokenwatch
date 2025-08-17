@@ -1,6 +1,6 @@
 # TokenWatch CLI - User Guide 📚
 
-A comprehensive guide to using TokenWatch CLI for monitoring AI token usage and costs.
+A comprehensive guide to using TokenWatch CLI for monitoring OpenAI token usage and costs.
 
 ## Table of Contents
 
@@ -23,10 +23,10 @@ go build -o tokenwatch ./cmd/root
 ./tokenwatch setup
 
 # Basic usage
-./tokenwatch openai                    # Last 7 days
-./tokenwatch openai --period 30d      # Last 30 days
-./tokenwatch openai -w                 # Watch mode - refresh every 30s
-./tokenwatch all                       # All platforms
+./tokenwatch usage                    # Last 7 days
+./tokenwatch usage --period 1d       # Last 24 hours
+./tokenwatch usage --period 30d      # Last 30 days
+./tokenwatch usage -w -p 1d          # Watch mode for real-time monitoring
 ```
 
 ## Installation
@@ -83,48 +83,43 @@ make build-all
 
 # Install locally (puts binary in ~/go/bin as 'tokenwatch')
 make install
-
-# Note: make install creates binary named 'tokenwatch', not 'root'
 ```
 
 ## Setup
 
 ```bash
-# Interactive setup for API keys
+# Interactive setup for OpenAI API key
 ./tokenwatch setup
 ```
 
 This will:
-- Prompt for your OpenAI API key
+- Prompt for your OpenAI Admin API key
 - Validate the API key by making a test call
 - Save the configuration to `~/.tokenwatch/config.yaml`
+
+**Important**: You need an OpenAI Admin API key with `api.usage.read` scope for organization-level access.
 
 ## Basic Usage
 
 ### OpenAI Usage
 
 ```bash
-# View OpenAI usage for last 7 days
-./tokenwatch openai
+# View OpenAI usage for last 7 days (default)
+./tokenwatch usage
 
 # Specify time period
-./tokenwatch openai --period 7d      # Last 7 days (default)
-./tokenwatch openai --period 30d     # Last 30 days
-./tokenwatch openai --period 90d     # Last 90 days
+./tokenwatch usage --period 1d       # Last 24 hours
+./tokenwatch usage --period 7d       # Last 7 days (default)
+./tokenwatch usage --period 30d      # Last 30 days
 
 # Short flags
-./tokenwatch openai -p 30d           # Same as --period 30d
+./tokenwatch usage -p 1d             # Same as --period 1d
 ```
 
-### All Platforms
-
-```bash
-# View combined data from all configured platforms
-./tokenwatch all
-
-# With specific time period
-./tokenwatch all --period 30d
-```
+**Available Time Periods:**
+- `1d` - Last 24 hours (perfect for recent activity)
+- `7d` - Last 7 days (ideal for historical data)
+- `30d` - Last 30 days (may have limited data)
 
 ### Configuration Management
 
@@ -141,17 +136,11 @@ This will:
 
 ## Watch Mode
 
-Watch mode provides real-time monitoring of your AI usage with automatic refresh every 30 seconds:
+Watch mode provides real-time monitoring of your OpenAI usage with automatic refresh every 30 seconds:
 
 ```bash
-# Watch OpenAI usage
-./tokenwatch openai -w
-
-# Watch all platforms
-./tokenwatch all -w
-
-# Watch with specific period
-./tokenwatch openai -w -p 30d
+# Watch OpenAI usage (1-day period only)
+./tokenwatch usage -w -p 1d
 
 # Stop watching: Press Ctrl+C
 ```
@@ -160,7 +149,10 @@ Watch mode provides real-time monitoring of your AI usage with automatic refresh
 - **Auto-refresh**: Updates every 30 seconds
 - **Screen clearing**: Clean display on each refresh
 - **Fresh data**: Bypasses cache for real-time information
+- **1-day only**: Watch mode is only available for recent activity
 - **Easy exit**: Ctrl+C to stop
+
+**Note**: Watch mode is only available for 1-day periods since longer periods don't need real-time updates.
 
 ## Debug Mode
 
@@ -168,21 +160,16 @@ Debug mode shows detailed API request/response information for troubleshooting a
 
 ```bash
 # Enable debug mode for OpenAI
-./tokenwatch openai --debug
+./tokenwatch usage --debug
 
-# Debug mode with watch
-./tokenwatch openai -w --debug
-
-# Debug mode for all platforms
-./tokenwatch all --debug
-
-# Debug with specific period
-./tokenwatch openai --debug --period 30d
+# Debug mode with specific period
+./tokenwatch usage --debug --period 30d
 ```
 
 **Debug Output Includes:**
 - **API Request Details**: URL, timestamps, parameters
 - **Raw JSON Responses**: Complete OpenAI API responses
+- **Pagination Flow**: Shows how data is fetched across multiple pages
 - **Request/Response Flow**: Full API call lifecycle
 
 **Use Cases:**
@@ -201,7 +188,7 @@ Configuration is stored in `~/.tokenwatch/config.yaml`
 
 ```bash
 # API Keys
-export TOKENWATCH_OPENAI_API_KEY="sk-..."
+export OPENAI_API_KEY="sk-..."
 
 # Logging
 export TOKENWATCH_LOG_LEVEL="debug"
@@ -212,9 +199,6 @@ export TOKENWATCH_LOG_LEVEL="debug"
 ```yaml
 api_keys:
   openai: "sk-..."
-  anthropic: "your-key-here"
-  grok: "your-key-here"
-  cursor: "your-key-here"
 
 settings:
   debug: false
@@ -234,10 +218,20 @@ settings:
 📈 Daily Averages: 721.7 tokens, 1.9 requests
 💰 Daily Cost Average: $0.0051
 
+💡 SMART RECOMMENDATIONS
+──────────────────────────────────────────────────
+📊 7-day period is ideal for:
+   • Weekly usage patterns
+   • Historical cost analysis
+   • Model performance comparison
+   • Budget planning
+
+🔄 For recent activity, try: --period 1d
+
 📋 MODEL BREAKDOWN
 ┌────────────────────────┬──────────────┬───────────────┬──────────────┬──────────┬─────────┬───────────────┐
 │         MODEL          │ INPUT TOKENS │ OUTPUT TOKENS │ TOTAL TOKENS │ REQUESTS │  COST   │ $/ 1 K TOKENS │
-├────────────────────────┼──────────────┼───────────────┼──────────────┼──────────┼─────────┼───────────────┤
+├────────────────────────┼──────────────┼───────────────┬──────────────┬──────────┬─────────┬───────────────┤
 │ gpt-4o-2024-08-06      │ 1872         │ 3099          │ 4971         │ 12       │ $0.0357 │ $0.0072       │
 │ gpt-4o-mini-2024-07-18 │ 10           │ 71            │ 81           │ 1        │ $0.0000 │ $0.0005       │
 │ ─                      │ ─            │ ─             │ ─            │ ─        │ ─       │ ─             │
@@ -248,21 +242,25 @@ settings:
 ### Debug Mode Output
 
 ```
-🔍 OPENAI USAGE API REQUEST:
+🔍 OPENAI USAGE API REQUEST (Page 1, Token: ):
    URL: https://api.openai.com/v1/organization/usage/completions?...
    Start Time: 2025-08-10 13:30:26 (1754825426)
    End Time: 2025-08-17 13:30:26 (1755430226)
    Bucket Width: 1d
    Group By: [model]
 
-🔍 RAW OPENAI USAGE API RESPONSE:
+🔍 RAW OPENAI USAGE API RESPONSE (Page 1, Token: ):
+   Has More: true
+   Next Page: page_AAAAAGijH7QR2l2hAAAAAGihG4A=
+   Data Buckets: 7
+   Total Results: 2
 {
   "data": [
     {
       "start_time": 1754825426,
       "end_time": 1754870400,
       "results": []
-    },
+    }
     // ... more data
   ]
 }
@@ -282,7 +280,7 @@ settings:
 - Check your OpenAI organization settings
 
 **"No data found"**
-- Try a shorter period: `./tokenwatch openai --period 7d`
+- Try a shorter period: `./tokenwatch usage --period 7d`
 - Verify you have recent API usage
 - Check if your API key is valid
 
@@ -295,7 +293,7 @@ chmod +x tokenwatch
 
 ```bash
 # Enable debug mode to see API details
-./tokenwatch openai --debug
+./tokenwatch usage --debug
 
 # Check configuration
 ./tokenwatch config check
@@ -309,10 +307,10 @@ chmod +x tokenwatch
 ```bash
 # Enable debug logging
 export TOKENWATCH_LOG_LEVEL=debug
-./tokenwatch openai
+./tokenwatch usage
 
 # Or use debug mode for API details
-./tokenwatch openai --debug
+./tokenwatch usage --debug
 ```
 
 ## Platform Support
@@ -320,11 +318,8 @@ export TOKENWATCH_LOG_LEVEL=debug
 | Platform | Status | Description |
 |----------|--------|-------------|
 | OpenAI | ✅ Ready | ChatGPT, GPT-4, DALL-E |
-| Anthropic | 🚧 Coming Soon | Claude models |
-| Grok | 🚧 Coming Soon | xAI's Grok |
-| Cursor | 🚧 Coming Soon | Cursor AI |
 
-> **Note**: Anthropic, Grok, and Cursor currently don't provide usage APIs. Support will be added when they make these APIs available.
+**Note**: Currently only OpenAI is supported as it's the only platform that provides comprehensive usage and costs APIs.
 
 ## Advanced Features
 
@@ -346,13 +341,19 @@ export TOKENWATCH_LOG_LEVEL=debug
 - **Fresh API calls** every 30 seconds
 - **Cache bypass** when needed
 
+### Smart Recommendations
+
+The CLI provides intelligent recommendations based on your selected time period:
+- **1-day**: Perfect for recent activity monitoring
+- **7-day**: Ideal for historical analysis and weekly patterns
+- **30-day**: May have limited data due to API limitations
+
 ## Getting Help
 
 ```bash
 # Command help
 ./tokenwatch --help
-./tokenwatch openai --help
-./tokenwatch all --help
+./tokenwatch usage --help
 
 # Version info
 ./tokenwatch version

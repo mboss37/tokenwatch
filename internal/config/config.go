@@ -121,12 +121,12 @@ func GetConfigFile() string {
 	if file == "" {
 		return "none"
 	}
-	
+
 	// Check if the file actually exists
 	if _, err := os.Stat(file); os.IsNotExist(err) {
 		return "none"
 	}
-	
+
 	return file
 }
 

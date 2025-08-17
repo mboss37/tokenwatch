@@ -1,59 +1,102 @@
-# TokenWatch CLI - Developer Guide 🛠️
+# TokenWatch Developer Guide 🛠️
 
-A comprehensive guide for developers contributing to TokenWatch CLI.
+Developer documentation for TokenWatch CLI - a tool for monitoring OpenAI token usage and costs.
 
 ## Table of Contents
 
 1. [Architecture Overview](#architecture-overview)
-2. [Getting Started](#getting-started)
-3. [Code Structure](#code-structure)
-4. [Adding New Platforms](#adding-new-platforms)
-5. [Debug Mode Implementation](#debug-mode-implementation)
-6. [Testing](#testing)
-7. [Contributing Guidelines](#contributing-guidelines)
+2. [Project Structure](#project-structure)
+3. [Development Setup](#development-setup)
+4. [Adding New Features](#adding-new-features)
+5. [Testing](#testing)
+6. [Building and Deployment](#building-and-deployment)
 
 ## Architecture Overview
 
-TokenWatch CLI follows a clean, layered architecture with clear separation of concerns:
-
-### Core Principles
-
-- **Platform Separation**: Each AI platform is completely isolated
-- **Interface-Driven Design**: Common interfaces for all platforms
-- **Layered Architecture**: Command → Provider → Model → Config layers
-- **Resilience Patterns**: Retry logic, rate limiting, circuit breaker
-- **Clean Extension Points**: Easy to add new platforms
-
-### Architecture Layers
+TokenWatch follows a clean, layered architecture designed for simplicity and maintainability:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    Command Layer                            │
-│  (openai_cmd.go, overview_cmd.go, setup_cmd.go, etc.)     │
-├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
+│  │   usage_cmd.go  │  │   setup_cmd.go  │  │ config_cmd  │ │
+│  │  (OpenAI usage) │  │ (API key setup) │  │ (settings)  │ │
+│  └─────────────────┘  └─────────────────┘  └─────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
 │                   Provider Layer                            │
-│  (Provider interface, OpenAIProvider, etc.)                │
-├─────────────────────────────────────────────────────────────┤
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │                openai.go                               │ │
+│  │           (OpenAI API implementation)                  │ │
+│  └─────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
 │                    Model Layer                              │
-│  (Consumption, Pricing, ConsumptionSummary, etc.)          │
-├─────────────────────────────────────────────────────────────┤
-│                   Config Layer                              │
-│  (Viper-based configuration management)                    │
-├─────────────────────────────────────────────────────────────┤
-│                   Utility Layer                            │
-│  (HTTP client, circuit breaker, logging, etc.)            │
+│  ┌─────────────────┐  ┌─────────────────┐                  │
+│  │  consumption.go │  │   pricing.go    │                  │
+│  │ (usage models)  │  │ (cost models)   │                  │
+│  └─────────────────┘  └─────────────────┘                  │
+└─────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                   Utility Layer                             │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────┐ │
+│  │  http_client.go │  │ circuit_breaker │  │   logger.go │ │
+│  │ (rate limiting) │  │ (fault tolerance)│  │ (logging)  │ │
+│  └─────────────────┘  └─────────────────┘  └─────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-## Getting Started
+### Key Design Principles
+
+1. **Single Responsibility**: Each component has one clear purpose
+2. **Dependency Injection**: Providers are injected into commands
+3. **Interface Segregation**: Clean interfaces for each layer
+4. **Error Handling**: Consistent error handling throughout
+5. **Configuration**: Centralized configuration management
+
+## Project Structure
+
+```
+tokenwatch/
+├── cmd/root/                 # Command implementations
+│   ├── main.go              # Application entry point
+│   ├── usage_cmd.go         # OpenAI usage command
+│   ├── setup_cmd.go         # API key setup
+│   ├── config_cmd.go        # Configuration management
+│   └── version_cmd.go       # Version information
+├── pkg/                     # Reusable packages
+│   ├── models/              # Data models
+│   │   ├── consumption.go   # Usage data structures
+│   │   └── pricing.go       # Cost data structures
+│   ├── providers/           # Platform implementations
+│   │   ├── provider.go      # Common interface
+│   │   └── openai.go        # OpenAI API implementation
+│   └── utils/               # Utility functions
+│       ├── http_client.go   # Rate-limited HTTP client
+│       ├── circuit_breaker.go # Fault tolerance
+│       ├── logger.go        # Structured logging
+│       ├── prompt.go        # User input handling
+│       ├── validation.go    # Input validation
+│       └── errors.go        # Error definitions
+├── internal/                 # Internal packages
+│   └── config/              # Configuration management
+│       └── config.go        # Viper-based config
+├── docs/                    # Documentation
+│   ├── README.md            # User guide
+│   └── DEVELOPER.md         # This file
+├── Makefile                 # Build and development tasks
+├── go.mod                   # Go module definition
+└── README.md                # Project overview
+```
+
+## Development Setup
 
 ### Prerequisites
 
-- **Go**: Version 1.21 or higher
-- **Git**: For version control
-- **Make**: For build automation (optional)
+- Go 1.21+
+- OpenAI Admin API key with `api.usage.read` scope
 
-### Development Setup
+### Local Development
 
 ```bash
 # Clone the repository
@@ -61,286 +104,77 @@ git clone https://github.com/mboss37/tokenwatch.git
 cd tokenwatch
 
 # Install dependencies
-go mod download
+go mod tidy
 
-# Build the binary
+# Build the application
 go build -o tokenwatch ./cmd/root
 
 # Run tests
 go test ./...
 
-# Run the CLI
-./tokenwatch --help
+# Install locally
+go install ./cmd/root
 ```
 
-### Development Workflow
+### Development Commands
 
 ```bash
-# Make changes to code
-# Build and test
-go build ./cmd/root
+# Build
+make build
+
+# Build for all platforms
+make build-all
+
+# Install locally
+make install
+
+# Format code
+make fmt
+
+# Run linter
+make lint
 
 # Run tests
-go test ./...
-
-# Test the CLI
-./tokenwatch openai --debug
-
-# Commit changes
-git add .
-git commit -m "Description of changes"
-git push origin master
+make test
 ```
 
-## Code Structure
+## Adding New Features
 
-### Directory Layout
+### Adding a New Command
 
-```
-tokenwatch/
-├── cmd/root/                 # Command implementations
-│   ├── main.go              # Entry point
-│   ├── openai_cmd.go        # OpenAI command
-│   ├── overview_cmd.go      # All platforms command
-│   ├── setup_cmd.go         # Setup command
-│   ├── config_cmd.go        # Configuration management
-│   └── version_cmd.go       # Version command
-├── pkg/                     # Public packages
-│   ├── models/              # Data models
-│   ├── providers/           # Platform providers
-│   └── utils/               # Utility functions
-├── internal/                # Internal packages
-│   └── config/              # Configuration management
-├── docs/                    # Documentation
-└── configs/                 # Configuration examples
-```
+1. **Create the command file** in `cmd/root/`
+2. **Implement the command logic** following existing patterns
+3. **Register the command** in the main command structure
+4. **Add tests** for the new functionality
 
-### Key Components
-
-#### Command Layer (`cmd/root/`)
-
-Commands implement the Cobra CLI framework:
-
+Example:
 ```go
-var openaiCmd = &cobra.Command{
-    Use:   "openai",
-    Short: "Show OpenAI token consumption and costs",
-    Long:  `Display comprehensive OpenAI usage...`,
+var newCmd = &cobra.Command{
+    Use:   "new",
+    Short: "Description of new command",
     RunE: func(cmd *cobra.Command, args []string) error {
-        // Command implementation
+        // Implementation here
+        return nil
     },
 }
-```
 
-**Key Features:**
-- **Flag Management**: `--period`, `--watch`, `--debug`
-- **Error Handling**: Structured error responses
-- **User Experience**: Clear output and helpful messages
-
-#### Provider Layer (`pkg/providers/`)
-
-Providers implement the `Provider` interface:
-
-```go
-type Provider interface {
-    GetPlatform() string
-    GetConsumption(startTime, endTime time.Time, bypassCache bool, debug bool) ([]*models.Consumption, error)
-    GetPricing(startTime, endTime time.Time, bypassCache bool, debug bool) ([]*models.Pricing, error)
-    GetConsumptionSummary(period string) (*models.ConsumptionSummary, error)
-    GetPricingSummary(period string) (*models.PricingSummary, error)
-    IsAvailable() bool
+func init() {
+    RootCmd.AddCommand(newCmd)
 }
 ```
 
-**Key Features:**
-- **Cache Management**: 5-minute TTL with bypass capability
-- **Rate Limiting**: 1 req/sec with burst of 5
-- **Circuit Breaker**: Prevents cascading failures
-- **Debug Mode**: Optional API request/response logging
+### Adding a New Provider
 
-#### Model Layer (`pkg/models/`)
+1. **Implement the Provider interface** in `pkg/providers/`
+2. **Add configuration support** for the new platform
+3. **Update setup command** to handle the new platform
+4. **Add validation** for the new API key format
 
-Data models for consistent representation:
+### Adding New Models
 
-```go
-type Consumption struct {
-    Platform      string
-    Model         string
-    InputTokens   int64
-    OutputTokens  int64
-    TotalTokens   int64
-    RequestCount  int64
-    StartTime     time.Time
-    EndTime       time.Time
-}
-
-type Pricing struct {
-    Platform string
-    Model    string
-    LineItem string
-    Amount   float64
-    Currency string
-    StartTime time.Time
-    EndTime   time.Time
-}
-```
-
-## Adding New Platforms
-
-### Step 1: Create Provider Implementation
-
-Create a new file `pkg/providers/[platform].go`:
-
-```go
-package providers
-
-import (
-    "time"
-    "tokenwatch/pkg/models"
-)
-
-type [Platform]Provider struct {
-    // Platform-specific fields
-}
-
-func New[Platform]Provider(apiKey string) *[Platform]Provider {
-    return &[Platform]Provider{
-        // Initialize fields
-    }
-}
-
-// Implement Provider interface methods
-func (p *[Platform]Provider) GetPlatform() string {
-    return "[platform]"
-}
-
-func (p *[Platform]Provider) GetConsumption(startTime, endTime time.Time, bypassCache bool, debug bool) ([]*models.Consumption, error) {
-    // Implementation
-}
-
-func (p *[Platform]Provider) GetPricing(startTime, endTime time.Time, bypassCache bool, debug bool) ([]*models.Pricing, error) {
-    // Implementation
-}
-
-// ... other methods
-```
-
-### Step 2: Update Provider Factory
-
-Add to `cmd/root/overview_cmd.go`:
-
-```go
-func getProvider(platform string) providers.Provider {
-    switch platform {
-    case "[platform]":
-        apiKey := config.GetAPIKey("[platform]")
-        if apiKey == "" {
-            return nil
-        }
-        return providers.New[Platform]Provider(apiKey)
-    // ... other cases
-    }
-}
-```
-
-### Step 3: Add Configuration Support
-
-Update `internal/config/config.go`:
-
-```go
-func GetAPIKey(platform string) string {
-    switch platform {
-    case "[platform]":
-        return viper.GetString("api_keys.[platform]")
-    // ... other cases
-    }
-}
-```
-
-### Step 4: Update Setup Command
-
-Add to `cmd/root/setup_cmd.go`:
-
-```go
-func setup[Platform](cmd *cobra.Command, args []string) error {
-    // Platform-specific setup logic
-}
-```
-
-## Debug Mode Implementation
-
-### Overview
-
-Debug mode provides optional API request/response logging for troubleshooting and development:
-
-```bash
-# Enable debug mode
-./tokenwatch openai --debug
-
-# Debug with watch mode
-./tokenwatch openai -w --debug
-
-# Debug all platforms
-./tokenwatch all --debug
-```
-
-### Implementation Details
-
-#### Command Layer
-
-```go
-// Add debug flag
-openaiCmd.Flags().BoolP("debug", "d", false, "Enable debug logging for API calls")
-
-// Pass debug parameter to display function
-func displayOpenAIData(provider *providers.OpenAIProvider, period string, bypassCache bool, debug bool) error {
-    // Pass debug to provider calls
-    consumptions, err := provider.GetConsumption(startTime, endTime, bypassCache, debug)
-    pricings, err := provider.GetPricing(startTime, endTime, bypassCache, debug)
-}
-```
-
-#### Provider Layer
-
-```go
-// Update interface to include debug parameter
-type Provider interface {
-    GetConsumption(startTime, endTime time.Time, bypassCache bool, debug bool) ([]*models.Consumption, error)
-    GetPricing(startTime, endTime time.Time, bypassCache bool, debug bool) ([]*models.Pricing, error)
-}
-
-// Implement debug logging in provider methods
-func (o *OpenAIProvider) GetUsage(startTime, endTime time.Time, bucketWidth string, groupBy []string, bypassCache bool, debug bool) (*OpenAIUsageResponse, error) {
-    // Log request details when debug is enabled
-    if debug {
-        fmt.Printf("🔍 OPENAI USAGE API REQUEST:\n")
-        fmt.Printf("   URL: %s\n", req.URL.String())
-        // ... more details
-    }
-    
-    // ... API call logic
-    
-    // Log raw response when debug is enabled
-    if debug {
-        rawJSON, _ := json.MarshalIndent(usageResp, "", "  ")
-        fmt.Printf("🔍 RAW OPENAI USAGE API RESPONSE:\n%s\n\n", string(rawJSON))
-    }
-}
-```
-
-### Debug Output Features
-
-- **API Request Details**: URL, timestamps, parameters
-- **Raw JSON Responses**: Complete API responses
-- **Cache Behavior**: Shows when cache is hit/bypassed
-- **Request/Response Flow**: Full API call lifecycle
-
-### Use Cases
-
-- **Troubleshooting**: Debug API issues and errors
-- **Development**: Verify API behavior during development
-- **Data Verification**: Check raw data for accuracy
-- **Performance Analysis**: Monitor API call patterns
+1. **Define the data structure** in `pkg/models/`
+2. **Add conversion functions** from API responses
+3. **Update display logic** to handle the new data
 
 ## Testing
 
@@ -350,155 +184,226 @@ func (o *OpenAIProvider) GetUsage(startTime, endTime time.Time, bucketWidth stri
 # Run all tests
 go test ./...
 
-# Run specific package tests
-go test ./pkg/models
-go test ./pkg/providers
-go test ./internal/config
-
-# Run with verbose output
-go test -v ./...
-
-# Run with coverage
+# Run tests with coverage
 go test -cover ./...
+
+# Run specific package tests
+go test ./pkg/utils
+
+# Run tests with verbose output
+go test -v ./...
 ```
 
 ### Test Structure
 
-Tests follow Go conventions:
+- **Unit tests** for individual functions
+- **Integration tests** for command workflows
+- **Mock external APIs** for reliable testing
 
-```go
-// pkg/models/consumption_test.go
-func TestConsumption_AddConsumption(t *testing.T) {
-    // Test implementation
-}
+## Building and Deployment
 
-func TestConsumptionSummary_AddConsumption(t *testing.T) {
-    // Test implementation
-}
+### Build Targets
+
+```bash
+# Single platform
+make build
+
+# All platforms
+make build-all
+
+# Install to system
+make install
 ```
 
-### Test Coverage
+### Supported Platforms
 
-Current test coverage includes:
-- ✅ **Models**: Consumption, Pricing, Summaries
-- ✅ **Providers**: OpenAI provider methods
-- ✅ **Config**: Configuration management
-- ✅ **Utils**: Utility functions
+- **Linux**: amd64, arm64
+- **macOS**: amd64, arm64  
+- **Windows**: amd64
 
-## Contributing Guidelines
+### Release Process
+
+1. **Update version** in `main.go`
+2. **Build all platforms** with `make build-all`
+3. **Create GitHub release** with built binaries
+4. **Tag the release** in git
+
+## Configuration
+
+### Configuration File
+
+Located at `~/.tokenwatch/config.yaml`:
+
+```yaml
+api_keys:
+  openai: "sk-..."
+
+settings:
+  debug: false
+  cache_duration: 300
+  request_timeout: 10
+  retry_attempts: 3
+```
+
+### Environment Variables
+
+```bash
+# API Keys
+export OPENAI_API_KEY="sk-..."
+
+# Logging
+export TOKENWATCH_LOG_LEVEL="debug"
+```
+
+## Error Handling
+
+### Error Types
+
+- **ValidationError**: Invalid input or configuration
+- **APIError**: External API communication issues
+- **ConfigError**: Configuration problems
+- **InternalError**: Unexpected internal issues
+
+### Error Recovery
+
+- **Automatic retries** with exponential backoff
+- **Circuit breaker** to prevent cascading failures
+- **Graceful degradation** when possible
+- **Clear error messages** for users
+
+## Logging
+
+### Log Levels
+
+- **INFO**: General application flow
+- **DEBUG**: Detailed debugging information
+- **WARN**: Warning conditions
+- **ERROR**: Error conditions
+
+### Structured Logging
+
+All logs include structured data for better debugging:
+
+```go
+utils.Info("API request completed", map[string]interface{}{
+    "platform": "openai",
+    "duration": "1.2s",
+    "status": "success",
+})
+```
+
+## Performance Considerations
+
+### Caching
+
+- **5-minute TTL** for normal operations
+- **Cache bypass** in watch mode
+- **Smart cache invalidation** based on usage patterns
+
+### Rate Limiting
+
+- **1 request/second** with burst of 5
+- **Automatic backoff** on rate limit errors
+- **Circuit breaker** for fault tolerance
+
+### Memory Management
+
+- **Efficient data structures** for large datasets
+- **Streaming responses** where possible
+- **Memory cleanup** after operations
+
+## Security
+
+### API Key Management
+
+- **Secure storage** in user's home directory
+- **Environment variable support** for CI/CD
+- **No hardcoded keys** in source code
+- **Key validation** before use
+
+### Data Privacy
+
+- **Local processing** of sensitive data
+- **No external logging** of API responses
+- **Configurable debug output** for development
+
+## Contributing
 
 ### Code Style
 
-- **Go Format**: Use `gofmt` or `go fmt`
-- **Naming**: Follow Go naming conventions
-- **Comments**: Document exported functions and types
-- **Error Handling**: Use structured errors with context
-
-### Commit Messages
-
-Follow conventional commit format:
-
-```
-type(scope): description
-
-- Detailed change 1
-- Detailed change 2
-
-Fixes #123
-```
-
-**Types:**
-- `feat`: New feature
-- `fix`: Bug fix
-- `docs`: Documentation changes
-- `style`: Code style changes
-- `refactor`: Code refactoring
-- `test`: Test additions/changes
+- **Go fmt** for formatting
+- **golangci-lint** for linting
+- **Consistent naming** conventions
+- **Documentation** for public APIs
 
 ### Pull Request Process
 
-1. **Fork** the repository
-2. **Create** a feature branch
-3. **Make** your changes
-4. **Test** thoroughly
-5. **Commit** with clear messages
-6. **Push** to your fork
-7. **Create** a pull request
+1. **Fork the repository**
+2. **Create a feature branch**
+3. **Implement your changes**
+4. **Add tests** for new functionality
+5. **Update documentation**
+6. **Submit a pull request**
 
-### Review Process
+### Testing Requirements
 
-- **Code Review**: All PRs require review
-- **Testing**: Ensure tests pass
-- **Documentation**: Update docs if needed
-- **Architecture**: Follow established patterns
+- **All new code** must have tests
+- **Existing tests** must pass
+- **Coverage** should not decrease
+- **Integration tests** for new commands
 
-## Key Features Implemented
+## Troubleshooting
 
-### ✅ **Core Infrastructure**
-- Provider interface, common models, config management
-- Platform separation architecture
-- Command structure with Cobra
+### Common Development Issues
 
-### ✅ **Production Features**
-- Retry logic, rate limiting, circuit breaker
-- Response caching with TTL
-- Structured error handling
-- API key validation
+**Build failures**
+```bash
+go mod tidy
+go clean -cache
+```
 
-### ✅ **Watch Mode**
-- Real-time monitoring with `-w` flag
-- Auto-refresh every 30 seconds
-- Cache bypass for fresh data
-- Screen clearing for clean display
+**Test failures**
+```bash
+go test -v ./...
+go vet ./...
+```
 
-### ✅ **Debug Mode**
-- Optional API request/response logging
-- `--debug` flag for troubleshooting
-- Clean normal mode output
-- Development-friendly debugging
+**Linting issues**
+```bash
+golangci-lint run
+make fmt
+```
 
-### ✅ **Enhanced UX**
-- Beautiful terminal tables with colors
-- Detailed model breakdowns
-- Total rows for aggregation
-- Clear error messages with suggestions
+### Debug Mode
 
-### ✅ **Resilience Patterns**
-- Exponential backoff retry logic
-- Rate limiting (1 req/sec, burst 5)
-- Circuit breaker (5 failures, 1 min reset)
-- Graceful error handling
+Enable debug logging for development:
+
+```bash
+export TOKENWATCH_LOG_LEVEL=debug
+./tokenwatch usage --debug
+```
 
 ## Future Enhancements
 
 ### Planned Features
 
-- **Additional Platforms**: Anthropic, Grok, Cursor (when APIs available)
-- **Advanced Analytics**: Usage trends, cost predictions
-- **Export Options**: CSV, JSON, PDF reports
-- **Web Dashboard**: Browser-based monitoring
-- **Alerting**: Cost threshold notifications
+- **Additional platforms** when APIs become available
+- **Export functionality** (CSV, JSON)
+- **Web dashboard** for visualization
+- **Alerting system** for cost thresholds
 
-### Architecture Improvements
+### Architecture Evolution
 
-- **Plugin System**: Dynamic platform loading
-- **Metrics Collection**: Prometheus integration
-- **Distributed Caching**: Redis support
-- **API Gateway**: Centralized API management
+- **Plugin system** for platform support
+- **Database backend** for historical data
+- **API server** for remote access
+- **Metrics collection** for monitoring
 
 ## Getting Help
 
-### Resources
+- **GitHub Issues**: Report bugs and request features
+- **GitHub Discussions**: Ask questions and share ideas
+- **Documentation**: Check this guide and user README
+- **Code**: Review the source code for examples
 
-- **User Guide**: [docs/README.md](README.md)
-- **GitHub Issues**: [Report bugs or request features](https://github.com/mboss37/tokenwatch/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/mboss37/tokenwatch/discussions)
-
-### Contact
-
-- **Repository**: [https://github.com/mboss37/tokenwatch](https://github.com/mboss37/tokenwatch)
-- **Issues**: [https://github.com/mboss37/tokenwatch/issues](https://github.com/mboss37/tokenwatch/issues)
-
----
-
-**Happy coding! 🚀**
+For more information, visit the [GitHub repository](https://github.com/mboss37/tokenwatch).

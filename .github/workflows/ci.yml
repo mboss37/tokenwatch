@@ -8,7 +8,6 @@ on:
 
 jobs:
   test:
-    name: Test
     runs-on: ubuntu-latest
     
     steps:
@@ -26,7 +25,6 @@ jobs:
       run: go test -v ./...
 
   build:
-    name: Build
     runs-on: ubuntu-latest
     
     steps:
@@ -44,7 +42,6 @@ jobs:
       run: go build -o tokenwatch ./cmd/root
 
   verify-binary:
-    name: Verify Binary
     runs-on: ubuntu-latest
     
     steps:

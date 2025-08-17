@@ -73,7 +73,7 @@ func runSetup() error {
 	fmt.Printf("🔍 Validating OpenAI API key...\n")
 	if err := utils.ValidatePlatformKey("openai", apiKey); err != nil {
 		fmt.Printf("❌ API key validation failed: %v\n", err)
-		
+
 		// Ask if user wants to continue anyway
 		if !utils.ConfirmPrompt("Do you want to save this key anyway?", false) {
 			return fmt.Errorf("setup cancelled due to invalid API key")
@@ -101,11 +101,11 @@ func runSetup() error {
 	fmt.Println()
 
 	fmt.Println("🚀 You can now use these commands:")
-	fmt.Println("   • tokenwatch openai              - View usage and costs")
-	fmt.Println("   • tokenwatch openai --period 1d  - View last 24 hours")
-	fmt.Println("   • tokenwatch openai --period 7d  - View last 7 days")
-	fmt.Println("   • tokenwatch openai --period 30d - View last 30 days")
-	fmt.Println("   • tokenwatch openai -w -p 1d     - Watch mode for real-time monitoring")
+	fmt.Println("   • tokenwatch usage              - View usage and costs")
+	fmt.Println("   • tokenwatch usage --period 1d  - View last 24 hours")
+	fmt.Println("   • tokenwatch usage --period 7d  - View last 7 days")
+	fmt.Println("   • tokenwatch usage --period 30d - View last 30 days")
+	fmt.Println("   • tokenwatch usage -w -p 1d     - Watch mode for real-time monitoring")
 	fmt.Println("   • tokenwatch config check         - Verify your setup")
 
 	fmt.Println("\n🎉 Setup complete! You can run 'tokenwatch setup' again anytime to update your API key.")

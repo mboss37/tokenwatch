@@ -70,8 +70,8 @@ var (
 	debug  bool
 )
 
-var openaiCmd = &cobra.Command{
-	Use:   "openai",
+var usageCmd = &cobra.Command{
+	Use:   "usage",
 	Short: "Show OpenAI token consumption and costs",
 	Long: `Display comprehensive OpenAI usage including tokens consumed and costs incurred.
 
@@ -82,10 +82,10 @@ This command shows:
 • Request statistics
 
 Examples:
-  tokenwatch openai                # Last 7 days
-  tokenwatch openai --period 1d    # Last 24 hours
-  tokenwatch openai --period 30d   # Last 30 days
-  tokenwatch openai -w -p 1d       # Watch mode - refresh every 30s (1d only)`,
+  tokenwatch usage                # Last 7 days
+  tokenwatch usage --period 1d    # Last 24 hours
+  tokenwatch usage --period 30d   # Last 30 days
+  tokenwatch usage -w -p 1d       # Watch mode - refresh every 30s (1d only)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Load config
 		if err := config.Init(); err != nil {
@@ -160,10 +160,10 @@ Examples:
 }
 
 func init() {
-	openaiCmd.Flags().StringP("period", "p", "7d", "Time period: 1d (recent activity), 7d (historical data), 30d")
-	openaiCmd.Flags().BoolP("watch", "w", false, "Watch mode - refresh every 30 seconds (only available with --period 1d)")
-	openaiCmd.Flags().BoolP("debug", "d", false, "Enable debug logging for API calls")
-	RootCmd.AddCommand(openaiCmd)
+	usageCmd.Flags().StringP("period", "p", "7d", "Time period: 1d (recent activity), 7d (historical data), 30d")
+	usageCmd.Flags().BoolP("watch", "w", false, "Watch mode - refresh every 30 seconds (only available with --period 1d)")
+	usageCmd.Flags().BoolP("debug", "d", false, "Enable debug logging for API calls")
+	RootCmd.AddCommand(usageCmd)
 }
 
 // displayOpenAIData fetches and displays OpenAI usage data

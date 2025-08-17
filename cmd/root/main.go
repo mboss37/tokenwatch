@@ -17,9 +17,9 @@ var (
 var RootCmd = &cobra.Command{
 	Use:     "tokenwatch",
 	Version: Version,
-	Short:   "TokenWatch: Track LLM token consumption and pricing",
-	Long: `TokenWatch is a CLI tool for monitoring token usage and costs across LLM platforms like OpenAI and Grok.
-Modular design allows easy extension to more platforms.`,
+	Short:   "TokenWatch: Track OpenAI token consumption and pricing",
+	Long: `TokenWatch is a CLI tool for monitoring OpenAI token usage and costs.
+Currently supports OpenAI organization-level usage and costs monitoring.`,
 	CompletionOptions: cobra.CompletionOptions{
 		DisableDefaultCmd: true,
 	},

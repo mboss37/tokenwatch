@@ -15,6 +15,21 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// getProvider creates and returns a provider for the specified platform
+func getProvider(platform string) providers.Provider {
+	switch platform {
+	case "openai":
+		apiKey := config.GetAPIKey("openai")
+		orgID := config.GetString("openai.organization_id")
+		if apiKey == "" {
+			return nil
+		}
+		return providers.NewOpenAIProvider(apiKey, orgID)
+	default:
+		return nil
+	}
+}
+
 // ModelStats holds aggregated stats for a model
 type ModelStats struct {
 	Model        string

@@ -14,8 +14,7 @@ var versionCmd = &cobra.Command{
 		fmt.Printf("TokenWatch %s\n", Version)
 		fmt.Printf("Built: %s\n", BuildTime)
 		fmt.Printf("Go Version: %s\n", "go1.21+")
-		fmt.Printf("Platform: Multi-platform (OpenAI, Anthropic*, Grok*, Cursor*)\n")
-		fmt.Printf("* = Coming soon\n")
+		fmt.Printf("Platform: OpenAI only\n")
 	},
 }
 

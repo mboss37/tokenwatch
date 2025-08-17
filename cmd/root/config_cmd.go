@@ -46,7 +46,7 @@ var checkCmd = &cobra.Command{
 
 		// Check API keys
 		fmt.Println("\n🔑 API KEYS:")
-		platforms := []string{"openai", "anthropic", "grok", "cursor"}
+		platforms := []string{"openai"}
 		hasKeys := false
 		for _, platform := range platforms {
 			key := config.GetAPIKey(platform)
@@ -59,7 +59,7 @@ var checkCmd = &cobra.Command{
 		}
 
 		if !hasKeys {
-			fmt.Printf("\n💡 Run 'tokenwatch setup' to configure API keys\n")
+			fmt.Printf("\n💡 Run 'tokenwatch setup' to configure your OpenAI API key\n")
 		}
 
 		fmt.Println("\n✅ Configuration check complete!")

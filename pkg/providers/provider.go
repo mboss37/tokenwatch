@@ -8,7 +8,7 @@ import (
 
 // Provider defines the interface that all platform providers must implement
 type Provider interface {
-	// GetPlatform returns the platform name (e.g., "openai", "grok")
+	// GetPlatform returns the platform name (e.g., "openai")
 	GetPlatform() string
 
 	// GetConsumption retrieves consumption data for a specific time period

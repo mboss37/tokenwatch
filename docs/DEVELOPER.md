@@ -329,28 +329,114 @@ utils.Info("API request completed", map[string]interface{}{
 
 ## Contributing
 
+### Development Workflow
+
+TokenWatch uses a **protected master branch** workflow that ensures code quality and prevents broken code from reaching production.
+
+#### 🚫 **What You CANNOT Do**
+- **Direct pushes to master** - Blocked by branch protection
+- **Direct commits to master** - Not allowed
+- **Force pushes** - Completely blocked
+
+#### ✅ **Required Workflow for ALL Changes**
+
+##### **1. Create Feature Branch**
+```bash
+# Always start from an up-to-date master
+git checkout master
+git pull origin master
+
+# Create and switch to feature branch
+git checkout -b feature/your-feature-name
+# or
+git checkout -b fix/bug-description
+# or
+git checkout -b docs/update-content
+```
+
+##### **2. Make Your Changes**
+```bash
+# Make code changes
+# Test locally
+./tokenwatch --help
+go test ./...
+go build ./cmd/root
+```
+
+##### **3. Commit and Push**
+```bash
+git add .
+git commit -m "feat: add new command for cost analysis"
+git push origin feature/your-feature-name
+```
+
+##### **4. Create Pull Request**
+- **Go to GitHub** → Pull requests → New PR
+- **Select** your feature branch → master
+- **Add description** of your changes
+- **CI will run automatically** (test, build, verify)
+
+##### **5. Wait for Requirements**
+- ✅ **CI checks must pass** (test, build, verify binary)
+- ✅ **At least 1 approval** from reviewer required
+- ✅ **Branch must be up-to-date** with master
+
+##### **6. Merge Only After All Requirements Met**
+- **Never merge** until all checks pass
+- **Never merge** without approval
+- **Never merge** outdated branches
+
+#### 🎯 **Branch Naming Conventions**
+```bash
+feature/command-name      # New features
+fix/bug-description       # Bug fixes
+docs/update-content       # Documentation
+refactor/component-name   # Code refactoring
+test/add-test-coverage    # Test improvements
+chore/update-deps         # Dependency updates
+```
+
 ### Code Style
 
 - **Go fmt** for formatting
-- **golangci-lint** for linting
 - **Consistent naming** conventions
 - **Documentation** for public APIs
-
-### Pull Request Process
-
-1. **Fork the repository**
-2. **Create a feature branch**
-3. **Implement your changes**
-4. **Add tests** for new functionality
-5. **Update documentation**
-6. **Submit a pull request**
+- **Tests** for all new functionality
 
 ### Testing Requirements
 
-- **All new code** must have tests
-- **Existing tests** must pass
+- **All new code** must have tests**
+- **Existing tests** must pass**
 - **Coverage** should not decrease
 - **Integration tests** for new commands
+- **CI pipeline** must pass all checks
+
+### CI/CD Pipeline
+
+TokenWatch uses **GitHub Actions** to automatically test and verify all changes.
+
+#### **Status Checks Required**
+Every pull request must pass these checks before merging:
+
+- ✅ **`test`** - All Go tests must pass
+- ✅ **`build`** - Code must compile successfully
+- ✅ **`verify binary`** - CLI must function correctly
+
+#### **What Happens Automatically**
+1. **On every PR** - CI pipeline runs automatically
+2. **Tests execute** - Ensures code quality
+3. **Build verification** - Confirms compilation
+4. **Binary testing** - Verifies CLI functionality
+5. **Status updates** - GitHub shows check results
+
+#### **Local Testing Before PR**
+```bash
+# Always test locally before pushing
+go test ./...                    # Run all tests
+go build ./cmd/root              # Ensure it builds
+./tokenwatch --version           # Test basic functionality
+./tokenwatch usage --help        # Test command functionality
+```
 
 ## Troubleshooting
 

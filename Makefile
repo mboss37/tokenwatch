@@ -38,7 +38,7 @@ build-all: clean
 .PHONY: install
 install:
 	@echo "Installing $(BINARY_NAME)..."
-	go install $(LDFLAGS) ./cmd/root
+	go build $(LDFLAGS) -o ~/go/bin/$(BINARY_NAME) ./cmd/root
 
 # Run the application
 .PHONY: run

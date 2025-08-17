@@ -45,25 +45,50 @@ TokenWatch CLI provides comprehensive monitoring of your OpenAI API usage:
 
 ## 🛠️ Installation
 
-### Build from Source (Recommended)
+### Download Pre-built Binary (Recommended for Users)
+
+#### **Quick Install**
+1. **Go to [Releases](https://github.com/mboss37/tokenwatch/releases)**
+2. **Download v0.1.0** for your platform:
+   - **Linux (x64)**: `tokenwatch-linux-amd64`
+   - **Linux (ARM64)**: `tokenwatch-linux-arm64`
+   - **macOS (Intel)**: `tokenwatch-darwin-amd64`
+   - **macOS (Apple Silicon)**: `tokenwatch-darwin-arm64`
+   - **Windows**: `tokenwatch-windows-amd64.exe`
+
+#### **Install Commands**
+```bash
+# Download and install (Linux/macOS)
+wget https://github.com/mboss37/tokenwatch/releases/download/v0.1.0/tokenwatch-linux-amd64
+chmod +x tokenwatch-linux-amd64
+sudo mv tokenwatch-linux-amd64 /usr/local/bin/tokenwatch
+
+# Test installation
+tokenwatch --version
+```
+
+### Install via Go (If you have Go installed)
+
+```bash
+# Install the specific version
+go install github.com/mboss37/tokenwatch/cmd/root@v0.1.0
+
+# Add to PATH if needed
+export PATH="$HOME/go/bin:$PATH"
+
+# Test installation
+tokenwatch --version
+```
+
+### Build from Source (For Developers)
 
 ```bash
 git clone https://github.com/mboss37/tokenwatch.git
 cd tokenwatch
+git checkout v0.1.0
 go build -o tokenwatch ./cmd/root
 chmod +x tokenwatch
 ./tokenwatch --help
-```
-
-### Install to System PATH
-
-```bash
-# Build and install
-go build -o tokenwatch ./cmd/root
-cp tokenwatch ~/go/bin/
-
-# Add to PATH (add to ~/.bashrc, ~/.zshrc, or ~/.profile)
-export PATH="$HOME/go/bin:$PATH"
 ```
 
 ### Using Makefile
@@ -76,13 +101,22 @@ make install    # Install locally
 
 ## 🔧 Setup
 
+### Quick Start
 ```bash
-./tokenwatch setup
+# 1. Install (choose method above)
+# 2. Setup your API key
+tokenwatch setup
+
+# 3. Start monitoring
+tokenwatch usage                    # Last 7 days
+tokenwatch usage --period 1d       # Last 24 hours
+tokenwatch usage -w -p 1d          # Watch mode for real-time updates
 ```
 
-**Requirements:**
-- OpenAI Admin API key with `api.usage.read` scope
-- Organization-level access (personal API keys won't work)
+### Requirements
+- **OpenAI Admin API key** with `api.usage.read` scope
+- **Organization-level access** (personal API keys won't work)
+- **Go 1.21+** (only if building from source)
 
 ## 📚 Documentation
 

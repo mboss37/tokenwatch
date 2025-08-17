@@ -15,6 +15,7 @@ var versionCmd = &cobra.Command{
 		fmt.Printf("Built: %s\n", BuildTime)
 		fmt.Printf("Go Version: %s\n", "go1.21+")
 		fmt.Printf("Platform: OpenAI only\n")
+		fmt.Printf("Status: First functional release\n")
 	},
 }
 

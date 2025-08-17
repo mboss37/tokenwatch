@@ -11,6 +11,7 @@ Track your AI token usage and costs across multiple platforms from your terminal
 - **📊 Real-time Usage Tracking** - Monitor your token consumption across models
 - **💰 Cost Analysis** - See detailed costs with per-token pricing
 - **📺 Watch Mode** - Live monitoring with auto-refresh every 30 seconds
+- **🔍 Debug Mode** - Optional API request/response logging for troubleshooting
 - **🚀 Fast & Lightweight** - Built with Go for speed and efficiency
 - **🔒 Secure** - API keys stored locally, never transmitted
 - **🎨 Beautiful Output** - Clean, colorful terminal tables with totals
@@ -25,7 +26,7 @@ Track your AI token usage and costs across multiple platforms from your terminal
 ```bash
 # Clone the repository
 git clone https://github.com/mboss37/tokenwatch.git
-cd tokenwatch/tokenwatchcli
+cd tokenwatch
 
 # Build the binary
 go build -o tokenwatch ./cmd/root
@@ -70,11 +71,10 @@ make build
 # Build for all platforms
 make build-all
 
-# Install locally (puts binary in ~/go/bin as 'root')
+# Install locally (puts binary in ~/go/bin as 'tokenwatch')
 make install
 
-# Note: make install creates binary named 'root', not 'tokenwatch'
-# You may need to rename it: mv ~/go/bin/root ~/go/bin/tokenwatch
+# Note: make install creates binary named 'tokenwatch', not 'root'
 ```
 
 #### Verify Installation
@@ -95,32 +95,38 @@ tokenwatch version
 
 ```bash
 # Interactive setup
-tokenwatch setup
+./tokenwatch setup
 ```
 
 ### Use
 
 ```bash
 # View OpenAI usage
-tokenwatch openai
+./tokenwatch openai
 
 # Watch mode - auto-refresh every 30s
-tokenwatch openai -w
+./tokenwatch openai -w
+
+# Debug mode - see raw API data
+./tokenwatch openai --debug
 
 # Last 30 days
-tokenwatch openai --period 30d
+./tokenwatch openai --period 30d
 
 # All platforms
-tokenwatch all
+./tokenwatch all
+
+# All platforms with debug
+./tokenwatch all --debug
 ```
 
 ## Example Output
 
-### OpenAI Usage
+### OpenAI Usage (Normal Mode)
 
 ```
 🤖 OPENAI USAGE - Last 7d
-⏰ Generated: 2025-08-17 12:22:12
+⏰ Generated: 2025-08-17 13:30:13
 
 📊 SUMMARY
 ──────────────────────────────────────────────────
@@ -137,6 +143,29 @@ tokenwatch all
 │ ─                      │ ─            │ ─             │ ─            │ ─        │ ─       │ ─             │
 │ TOTAL                  │ 1882         │ 3170          │ 5052         │ 13       │ $0.0357 │ $0.0071       │
 └────────────────────────┴──────────────┴───────────────┴──────────────┴──────────┴─────────┴───────────────┘
+```
+
+### Debug Mode Output
+
+```
+🔍 OPENAI USAGE API REQUEST:
+   URL: https://api.openai.com/v1/organization/usage/completions?...
+   Start Time: 2025-08-10 13:30:26 (1754825426)
+   End Time: 2025-08-17 13:30:26 (1755430226)
+   Bucket Width: 1d
+   Group By: [model]
+
+🔍 RAW OPENAI USAGE API RESPONSE:
+{
+  "data": [
+    {
+      "start_time": 1754825426,
+      "end_time": 1754870400,
+      "results": []
+    },
+    // ... more data
+  ]
+}
 ```
 
 ### All Platforms View
@@ -193,12 +222,41 @@ tokenwatch all
 ### Watch Mode
 
 ```bash
-tokenwatch openai -w
+./tokenwatch openai -w
 # Auto-refreshes every 30 seconds
 # Press Ctrl+C to stop
 
 🔄 Refreshing every 30 seconds... (Press Ctrl+C to stop)
 ```
+
+## Debug Mode 🔍
+
+Debug mode provides optional API request/response logging for troubleshooting and development:
+
+```bash
+# Enable debug mode for OpenAI
+./tokenwatch openai --debug
+
+# Debug mode with watch
+./tokenwatch openai -w --debug
+
+# Debug mode for all platforms
+./tokenwatch all --debug
+
+# Debug with specific period
+./tokenwatch openai --debug --period 30d
+```
+
+**Debug Output Includes:**
+- **API Request Details**: URL, timestamps, parameters
+- **Raw JSON Responses**: Complete OpenAI API responses
+- **Request/Response Flow**: Full API call lifecycle
+
+**Use Cases:**
+- Troubleshooting API issues
+- Verifying data freshness
+- Development and testing
+- Understanding API behavior
 
 ## Requirements
 
@@ -249,12 +307,13 @@ Environment variables also supported:
 - **Structured Logging** - Debug with `TOKENWATCH_LOG_LEVEL=debug`
 - **Smart Errors** - Helpful suggestions when things go wrong
 - **API Validation** - Validates API keys during setup
+- **Debug Mode** - Optional API request/response logging with `--debug` flag
 
 ## Contributing 🤝
 
 We welcome contributions! Please read our [Developer Guide](docs/DEVELOPER.md) first.
 
-Key principle: **Platform Separation** - Each AI platform is completely isolated in its own files.
+Key principle: **Platform Separation** - Each LLM platform has isolated implementations (dedicated files, no mixing of logic).
 
 ## Troubleshooting 🔧
 
@@ -284,18 +343,36 @@ chmod +x tokenwatch
 ### Usage Issues
 
 **"OpenAI not configured"**
-→ Run `tokenwatch setup`
+→ Run `./tokenwatch setup`
 
 **"API key lacks required permissions"**  
 → You need an Admin API key with `api.usage.read` scope
 
 **"No data found"**
-→ Try a shorter period: `tokenwatch openai --period 7d`
+→ Try a shorter period: `./tokenwatch openai --period 7d`
 
-### Debug mode
+### Debug Mode for Troubleshooting
+
 ```bash
+# Enable debug mode to see API details
+./tokenwatch openai --debug
+
+# Check configuration
+./tokenwatch config check
+
+# Verify API key
+./tokenwatch setup
+```
+
+### Logging
+
+```bash
+# Enable debug logging
 export TOKENWATCH_LOG_LEVEL=debug
-tokenwatch openai
+./tokenwatch openai
+
+# Or use debug mode for API details
+./tokenwatch openai --debug
 ```
 
 ## License

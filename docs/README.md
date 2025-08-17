@@ -1,95 +1,143 @@
-# TokenWatch CLI - User Guide
+# TokenWatch CLI - User Guide 📚
 
-Welcome to TokenWatch CLI! This guide will help you get started with monitoring your AI token consumption and costs across multiple platforms.
+A comprehensive guide to using TokenWatch CLI for monitoring AI token usage and costs.
 
 ## Table of Contents
 
-1. [Installation](#installation)
-2. [Quick Start](#quick-start)
-3. [Commands Overview](#commands-overview)
-4. [Platform-Specific Commands](#platform-specific-commands)
+1. [Quick Start](#quick-start)
+2. [Installation](#installation)
+3. [Setup](#setup)
+4. [Basic Usage](#basic-usage)
 5. [Watch Mode](#watch-mode)
-6. [Configuration](#configuration)
-7. [Troubleshooting](#troubleshooting)
+6. [Debug Mode](#debug-mode)
+7. [Configuration](#configuration)
+8. [Troubleshooting](#troubleshooting)
+
+## Quick Start 🚀
+
+```bash
+# Install and setup
+git clone https://github.com/mboss37/tokenwatch.git
+cd tokenwatch
+go build -o tokenwatch ./cmd/root
+./tokenwatch setup
+
+# Basic usage
+./tokenwatch openai                    # Last 7 days
+./tokenwatch openai --period 30d      # Last 30 days
+./tokenwatch openai -w                 # Watch mode - refresh every 30s
+./tokenwatch all                       # All platforms
+```
 
 ## Installation
 
-### Download Binary
-
-Download the latest release for your platform:
-- **macOS**: `tokenwatch-darwin-amd64` or `tokenwatch-darwin-arm64`
-- **Linux**: `tokenwatch-linux-amd64`
-- **Windows**: `tokenwatch-windows-amd64.exe`
-
-Make it executable (macOS/Linux):
-```bash
-chmod +x tokenwatch
-```
-
-### Build from Source
+### Build from Source (Recommended)
 
 ```bash
+# Clone the repository
 git clone https://github.com/mboss37/tokenwatch.git
-cd tokenwatch/tokenwatchcli
+cd tokenwatch
+
+# Build the binary
 go build -o tokenwatch ./cmd/root
+
+# Make it executable (Linux/macOS)
+chmod +x tokenwatch
+
+# Test it works
+./tokenwatch --help
 ```
 
-## Quick Start
+### Install to System PATH
 
-1. **Set up your first platform:**
-   ```bash
-   tokenwatch setup
-   ```
+**Linux/macOS:**
+```bash
+# Build and install to ~/go/bin
+go build -o tokenwatch ./cmd/root
+cp tokenwatch ~/go/bin/
 
-2. **View your usage:**
-   ```bash
-   tokenwatch openai    # View OpenAI usage
-   tokenwatch all       # View all platforms
-   ```
+# Add to PATH (add this to your ~/.bashrc, ~/.zshrc, or ~/.profile)
+export PATH="$HOME/go/bin:$PATH"
 
-3. **Monitor in real-time:**
-   ```bash
-   tokenwatch openai -w  # Watch mode - refreshes every 30s
-   ```
+# Or install system-wide (requires sudo)
+sudo cp tokenwatch /usr/local/bin/
+```
 
-## Commands Overview
+**Windows:**
+```bash
+# Build for Windows
+go build -o tokenwatch.exe ./cmd/root
 
-### Core Commands
+# Add the directory to your PATH environment variable
+# Or run from the current directory: .\tokenwatch.exe --help
+```
 
-- `tokenwatch setup` - Interactive setup for API keys
-- `tokenwatch config` - Manage configuration
-- `tokenwatch all` - View combined data from all platforms
-- `tokenwatch openai` - View OpenAI usage and costs
-- `tokenwatch version` - Display version information
-
-### Global Flags
-
-- `--period, -p` - Time period: `7d` (default), `30d`, or `90d`
-- `--watch, -w` - Watch mode - auto-refresh every 30 seconds
-- `--help, -h` - Show help for any command
-
-## Platform-Specific Commands
-
-### OpenAI
-
-View your OpenAI token consumption and costs:
+### Using Makefile
 
 ```bash
-# Last 7 days (default)
-tokenwatch openai
+# Build only
+make build
 
-# Last 30 days
-tokenwatch openai --period 30d
+# Build for all platforms
+make build-all
 
-# Last 90 days
-tokenwatch openai --period 90d
+# Install locally (puts binary in ~/go/bin as 'tokenwatch')
+make install
 
-# Watch mode - real-time monitoring
-tokenwatch openai -w
-tokenwatch openai -w -p 30d
+# Note: make install creates binary named 'tokenwatch', not 'root'
 ```
 
-**Note:** Currently, only OpenAI provides usage APIs. Support for Anthropic, Grok, and Cursor will be added when they provide similar APIs.
+## Setup
+
+```bash
+# Interactive setup for API keys
+./tokenwatch setup
+```
+
+This will:
+- Prompt for your OpenAI API key
+- Validate the API key by making a test call
+- Save the configuration to `~/.tokenwatch/config.yaml`
+
+## Basic Usage
+
+### OpenAI Usage
+
+```bash
+# View OpenAI usage for last 7 days
+./tokenwatch openai
+
+# Specify time period
+./tokenwatch openai --period 7d      # Last 7 days (default)
+./tokenwatch openai --period 30d     # Last 30 days
+./tokenwatch openai --period 90d     # Last 90 days
+
+# Short flags
+./tokenwatch openai -p 30d           # Same as --period 30d
+```
+
+### All Platforms
+
+```bash
+# View combined data from all configured platforms
+./tokenwatch all
+
+# With specific time period
+./tokenwatch all --period 30d
+```
+
+### Configuration Management
+
+```bash
+# Check configuration status
+./tokenwatch config check
+
+# Reset configuration
+./tokenwatch config reset
+
+# View version
+./tokenwatch version
+```
 
 ## Watch Mode
 
@@ -97,120 +145,220 @@ Watch mode provides real-time monitoring of your AI usage with automatic refresh
 
 ```bash
 # Watch OpenAI usage
-tokenwatch openai -w
+./tokenwatch openai -w
 
 # Watch all platforms
-tokenwatch all -w
+./tokenwatch all -w
 
-# Watch with custom period
-tokenwatch openai -w -p 30d
+# Watch with specific period
+./tokenwatch openai -w -p 30d
+
+# Stop watching: Press Ctrl+C
 ```
 
-Features:
-- Auto-refreshes every 30 seconds
-- Clear screen between updates
-- Press `Ctrl+C` to stop watching
-- Works with all period options
+**Features:**
+- **Auto-refresh**: Updates every 30 seconds
+- **Screen clearing**: Clean display on each refresh
+- **Fresh data**: Bypasses cache for real-time information
+- **Easy exit**: Ctrl+C to stop
+
+## Debug Mode
+
+Debug mode shows detailed API request/response information for troubleshooting and development:
+
+```bash
+# Enable debug mode for OpenAI
+./tokenwatch openai --debug
+
+# Debug mode with watch
+./tokenwatch openai -w --debug
+
+# Debug mode for all platforms
+./tokenwatch all --debug
+
+# Debug with specific period
+./tokenwatch openai --debug --period 30d
+```
+
+**Debug Output Includes:**
+- **API Request Details**: URL, timestamps, parameters
+- **Raw JSON Responses**: Complete OpenAI API responses
+- **Request/Response Flow**: Full API call lifecycle
+
+**Use Cases:**
+- Troubleshooting API issues
+- Verifying data freshness
+- Development and testing
+- Understanding API behavior
 
 ## Configuration
 
-### Setup Command
+### Config File Location
 
-Interactive setup for all platforms:
-```bash
-tokenwatch setup
-```
+Configuration is stored in `~/.tokenwatch/config.yaml`
 
-Follow the prompts to:
-1. Select a platform
-2. Enter your API key (masked input)
-3. Validate the API key
-4. Optionally configure additional platforms
-
-### Config Management
+### Environment Variables
 
 ```bash
-# Check current configuration
-tokenwatch config check
+# API Keys
+export TOKENWATCH_OPENAI_API_KEY="sk-..."
 
-# Reset all configuration
-tokenwatch config reset
+# Logging
+export TOKENWATCH_LOG_LEVEL="debug"
 ```
 
-### Manual Configuration
-
-Configuration is stored in `~/.tokenwatch/config.yaml`:
+### Config File Structure
 
 ```yaml
 api_keys:
-  openai: sk-your-api-key-here
-  anthropic: your-anthropic-key
-  grok: your-grok-key
-  cursor: your-cursor-key
+  openai: "sk-..."
+  anthropic: "your-key-here"
+  grok: "your-key-here"
+  cursor: "your-key-here"
 
 settings:
   debug: false
 ```
 
-### Environment Variables
+## Example Output
 
-You can also use environment variables:
-- `TOKENWATCH_OPENAI_API_KEY`
-- `TOKENWATCH_ANTHROPIC_API_KEY`
-- `TOKENWATCH_GROK_API_KEY`
-- `TOKENWATCH_CURSOR_API_KEY`
-- `TOKENWATCH_LOG_LEVEL` (debug, info, warn, error)
+### OpenAI Usage (Normal Mode)
+
+```
+🤖 OPENAI USAGE - Last 7d
+⏰ Generated: 2025-08-17 13:30:13
+
+📊 SUMMARY
+──────────────────────────────────────────────────
+📅 Period: 2025-08-10 to 2025-08-17 (7 days)
+📈 Daily Averages: 721.7 tokens, 1.9 requests
+💰 Daily Cost Average: $0.0051
+
+📋 MODEL BREAKDOWN
+┌────────────────────────┬──────────────┬───────────────┬──────────────┬──────────┬─────────┬───────────────┐
+│         MODEL          │ INPUT TOKENS │ OUTPUT TOKENS │ TOTAL TOKENS │ REQUESTS │  COST   │ $/ 1 K TOKENS │
+├────────────────────────┼──────────────┼───────────────┼──────────────┼──────────┼─────────┼───────────────┤
+│ gpt-4o-2024-08-06      │ 1872         │ 3099          │ 4971         │ 12       │ $0.0357 │ $0.0072       │
+│ gpt-4o-mini-2024-07-18 │ 10           │ 71            │ 81           │ 1        │ $0.0000 │ $0.0005       │
+│ ─                      │ ─            │ ─             │ ─            │ ─        │ ─       │ ─             │
+│ TOTAL                  │ 1882         │ 3170          │ 5052         │ 13       │ $0.0357 │ $0.0071       │
+└────────────────────────┴──────────────┴───────────────┴──────────────┴──────────┴─────────┴───────────────┘
+```
+
+### Debug Mode Output
+
+```
+🔍 OPENAI USAGE API REQUEST:
+   URL: https://api.openai.com/v1/organization/usage/completions?...
+   Start Time: 2025-08-10 13:30:26 (1754825426)
+   End Time: 2025-08-17 13:30:26 (1755430226)
+   Bucket Width: 1d
+   Group By: [model]
+
+🔍 RAW OPENAI USAGE API RESPONSE:
+{
+  "data": [
+    {
+      "start_time": 1754825426,
+      "end_time": 1754870400,
+      "results": []
+    },
+    // ... more data
+  ]
+}
+```
 
 ## Troubleshooting
 
 ### Common Issues
 
-**"Platform not configured" error:**
-- Run `tokenwatch setup` to configure the platform
-- Or check `tokenwatch config check` to see what's missing
-
-**"No data found" message:**
-- Ensure you've made API calls during the selected period
-- Try a shorter period like `--period 7d`
-- Note: Cost data may not be available for periods longer than 30 days
-
-**API Key Issues:**
-- Verify your API key is correct (should start with 'sk-' for OpenAI)
-- Check that your key has the necessary permissions
-- For OpenAI: Ensure your organization has usage tracking enabled
-
-### Debug Mode
-
-Enable debug logging:
+**"OpenAI not configured"**
 ```bash
+./tokenwatch setup
+```
+
+**"API key lacks required permissions"**
+- You need an Admin API key with `api.usage.read` scope
+- Check your OpenAI organization settings
+
+**"No data found"**
+- Try a shorter period: `./tokenwatch openai --period 7d`
+- Verify you have recent API usage
+- Check if your API key is valid
+
+**"Permission denied"**
+```bash
+chmod +x tokenwatch
+```
+
+### Debug Mode for Troubleshooting
+
+```bash
+# Enable debug mode to see API details
+./tokenwatch openai --debug
+
+# Check configuration
+./tokenwatch config check
+
+# Verify API key
+./tokenwatch setup
+```
+
+### Logging
+
+```bash
+# Enable debug logging
 export TOKENWATCH_LOG_LEVEL=debug
-tokenwatch openai
+./tokenwatch openai
+
+# Or use debug mode for API details
+./tokenwatch openai --debug
 ```
 
-Or set in config:
-```yaml
-settings:
-  debug: true
+## Platform Support
+
+| Platform | Status | Description |
+|----------|--------|-------------|
+| OpenAI | ✅ Ready | ChatGPT, GPT-4, DALL-E |
+| Anthropic | 🚧 Coming Soon | Claude models |
+| Grok | 🚧 Coming Soon | xAI's Grok |
+| Cursor | 🚧 Coming Soon | Cursor AI |
+
+> **Note**: Anthropic, Grok, and Cursor currently don't provide usage APIs. Support will be added when they make these APIs available.
+
+## Advanced Features
+
+### Cache Management
+
+- **Normal mode**: 5-minute cache for efficiency
+- **Watch mode**: Cache bypassed for real-time data
+- **Debug mode**: Shows cache behavior
+
+### Rate Limiting
+
+- **OpenAI**: 1 request/second with burst of 5
+- **Automatic retries** with exponential backoff
+- **Circuit breaker** to prevent cascading failures
+
+### Data Freshness
+
+- **Real-time data** in watch mode
+- **Fresh API calls** every 30 seconds
+- **Cache bypass** when needed
+
+## Getting Help
+
+```bash
+# Command help
+./tokenwatch --help
+./tokenwatch openai --help
+./tokenwatch all --help
+
+# Version info
+./tokenwatch version
+
+# Configuration check
+./tokenwatch config check
 ```
 
-## Features
-
-### Production-Ready Enhancements
-- **Retry Logic**: Automatic retries for failed API calls
-- **Rate Limiting**: Respects API rate limits (1 req/sec with burst of 5)
-- **Circuit Breaker**: Prevents cascading failures
-- **Caching**: 5-minute cache to reduce API calls
-- **Structured Logging**: Better debugging and monitoring
-- **API Key Validation**: Validates keys during setup
-
-### Data Presentation
-- **Detailed Model Breakdown**: Shows usage per model
-- **Cost Analysis**: Per-token costs and daily averages
-- **Total Rows**: Clear summaries in all tables
-- **Color-Coded Output**: Easy to read terminal output
-
-## Next Steps
-
-- Check out the [Developer Guide](DEVELOPER.md) if you want to contribute
-- Report issues on [GitHub](https://github.com/mboss37/tokenwatch/issues)
-- Star the project if you find it useful!
+For more information, see the [Developer Guide](DEVELOPER.md) or visit the [GitHub repository](https://github.com/mboss37/tokenwatch).

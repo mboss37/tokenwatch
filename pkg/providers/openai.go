@@ -321,6 +321,14 @@ func (o *OpenAIProvider) GetUsage(startTime, endTime time.Time, bucketWidth stri
 	}
 	req.URL.RawQuery = q.Encode()
 
+	// Log request details for debugging
+	fmt.Printf("🔍 OPENAI USAGE API REQUEST:\n")
+	fmt.Printf("   URL: %s\n", req.URL.String())
+	fmt.Printf("   Start Time: %s (%d)\n", startTime.Format("2006-01-02 15:04:05"), startTime.Unix())
+	fmt.Printf("   End Time: %s (%d)\n", endTime.Format("2006-01-02 15:04:05"), endTime.Unix())
+	fmt.Printf("   Bucket Width: %s\n", bucketWidth)
+	fmt.Printf("   Group By: %v\n\n", groupBy)
+
 	// Add headers
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", o.apiKey))
 	if o.orgID != "" {
@@ -353,6 +361,10 @@ func (o *OpenAIProvider) GetUsage(startTime, endTime time.Time, bucketWidth stri
 	if err := json.NewDecoder(resp.Body).Decode(&usageResp); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
+
+	// Log raw response for debugging
+	rawJSON, _ := json.MarshalIndent(usageResp, "", "  ")
+	fmt.Printf("🔍 RAW OPENAI USAGE API RESPONSE:\n%s\n\n", string(rawJSON))
 
 	// Cache the result
 	o.saveToCache(cacheKey, &usageResp)
@@ -403,6 +415,13 @@ func (o *OpenAIProvider) GetCosts(startTime, endTime time.Time, groupBy []string
 	}
 	req.URL.RawQuery = q.Encode()
 
+	// Log request details for debugging
+	fmt.Printf("🔍 OPENAI COSTS API REQUEST:\n")
+	fmt.Printf("   URL: %s\n", req.URL.String())
+	fmt.Printf("   Start Time: %s (%d)\n", startTime.Format("2006-01-02 15:04:05"), startTime.Unix())
+	fmt.Printf("   End Time: %s (%d)\n", endTime.Format("2006-01-02 15:04:05"), endTime.Unix())
+	fmt.Printf("   Group By: %v\n\n", groupBy)
+
 	// Add headers
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", o.apiKey))
 	if o.orgID != "" {
@@ -435,6 +454,10 @@ func (o *OpenAIProvider) GetCosts(startTime, endTime time.Time, groupBy []string
 	if err := json.NewDecoder(resp.Body).Decode(&costResp); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
+
+	// Log raw response for debugging
+	rawJSON, _ := json.MarshalIndent(costResp, "", "  ")
+	fmt.Printf("🔍 RAW OPENAI COSTS API RESPONSE:\n%s\n\n", string(rawJSON))
 
 	// Cache the result
 	o.saveToCache(cacheKey, &costResp)

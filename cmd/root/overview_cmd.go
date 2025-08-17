@@ -17,8 +17,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-
-
 var allCmd = &cobra.Command{
 	Use:   "all",
 	Short: "Show combined consumption and costs from all configured platforms",
@@ -66,15 +64,15 @@ Examples:
 			for {
 				// Clear screen
 				fmt.Print("\033[H\033[2J")
-				
+
 				// Display data with cache bypassed for fresh data
 				if err := displayAllPlatformsData(platforms, period, true); err != nil {
 					fmt.Printf("❌ Error: %v\n", err)
 				}
-				
+
 				// Show refresh info
 				fmt.Printf("\n🔄 Refreshing every 30 seconds... (Press Ctrl+C to stop)\n")
-				
+
 				// Wait 30 seconds
 				time.Sleep(30 * time.Second)
 			}
@@ -133,10 +131,10 @@ func displayAllPlatformsData(platforms []string, period string, bypassCache bool
 
 // PlatformDataResult holds the data collected from a single platform
 type PlatformDataResult struct {
-	platform    string
+	platform     string
 	consumptions []*models.Consumption
-	pricings    []*models.Pricing
-	err         error
+	pricings     []*models.Pricing
+	err          error
 }
 
 // collectPlatformDataParallel fetches data from all platforms concurrently
@@ -312,7 +310,7 @@ func displayAllPlatformsTable(results []PlatformDataResult, period string) {
 	for _, result := range results {
 		// Create a map to aggregate data by model
 		modelMap := make(map[string]*ModelStats)
-		
+
 		// Aggregate consumption data by model
 		for _, consumption := range result.consumptions {
 			if _, exists := modelMap[consumption.Model]; !exists {
@@ -324,14 +322,14 @@ func displayAllPlatformsTable(results []PlatformDataResult, period string) {
 			stats.TotalTokens += consumption.TotalTokens
 			stats.Requests += consumption.RequestCount
 		}
-		
+
 		// Add pricing data
 		for _, pricing := range result.pricings {
 			if stats, exists := modelMap[pricing.Model]; exists {
 				stats.Cost += pricing.Amount
 			}
 		}
-		
+
 		// Convert to slice and sort by total tokens (descending)
 		var models []ModelStats
 		for _, stats := range modelMap {
@@ -344,14 +342,14 @@ func displayAllPlatformsTable(results []PlatformDataResult, period string) {
 		sort.Slice(models, func(i, j int) bool {
 			return models[i].TotalTokens > models[j].TotalTokens
 		})
-		
+
 		// Add rows for each model
 		for _, model := range models {
 			costPer1K := float64(0)
 			if model.TotalTokens > 0 && model.Cost > 0 {
 				costPer1K = (model.Cost / float64(model.TotalTokens)) * 1000
 			}
-			
+
 			// Color-code the platform name for better distinction
 			platformName := color.CyanString(strings.Title(result.platform))
 

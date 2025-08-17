@@ -97,15 +97,15 @@ Examples:
 			for {
 				// Clear screen
 				fmt.Print("\033[H\033[2J")
-				
+
 				// Display data with cache bypassed for fresh data
 				if err := displayOpenAIData(provider, period, true); err != nil {
 					fmt.Printf("❌ Error: %v\n", err)
 				}
-				
+
 				// Show refresh info
 				fmt.Printf("\n🔄 Refreshing every 30 seconds... (Press Ctrl+C to stop)\n")
-				
+
 				// Wait 30 seconds
 				time.Sleep(30 * time.Second)
 			}
@@ -119,6 +119,7 @@ Examples:
 func init() {
 	openaiCmd.Flags().StringP("period", "p", "7d", "Time period (7d, 30d, 90d)")
 	openaiCmd.Flags().BoolP("watch", "w", false, "Watch mode - refresh every 30 seconds")
+	openaiCmd.Flags().BoolP("fresh", "f", false, "Force fresh data (bypass cache)")
 	RootCmd.AddCommand(openaiCmd)
 }
 

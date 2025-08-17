@@ -43,6 +43,7 @@ Examples:
 		// Get flags
 		period, _ := cmd.Flags().GetString("period")
 		watch, _ := cmd.Flags().GetBool("watch")
+		debug, _ := cmd.Flags().GetBool("debug")
 
 		// Validate period
 		if period != "" && period != "7d" && period != "30d" && period != "90d" {
@@ -66,7 +67,7 @@ Examples:
 				fmt.Print("\033[H\033[2J")
 
 				// Display data with cache bypassed for fresh data
-				if err := displayAllPlatformsData(platforms, period, true); err != nil {
+				if err := displayAllPlatformsData(platforms, period, true, debug); err != nil {
 					fmt.Printf("❌ Error: %v\n", err)
 				}
 
@@ -78,7 +79,7 @@ Examples:
 			}
 		} else {
 			// Single run
-			return displayAllPlatformsData(platforms, period, false)
+			return displayAllPlatformsData(platforms, period, false, debug)
 		}
 	},
 }
@@ -86,11 +87,12 @@ Examples:
 func init() {
 	allCmd.Flags().StringP("period", "p", "7d", "Time period (7d, 30d, 90d)")
 	allCmd.Flags().BoolP("watch", "w", false, "Watch mode - refresh every 30 seconds")
+	allCmd.Flags().BoolP("debug", "d", false, "Enable debug mode for providers")
 	RootCmd.AddCommand(allCmd)
 }
 
 // displayAllPlatformsData fetches and displays combined platform data
-func displayAllPlatformsData(platforms []string, period string, bypassCache bool) error {
+func displayAllPlatformsData(platforms []string, period string, bypassCache bool, debug bool) error {
 	fmt.Printf("🎯 TOKENWATCH ALL PLATFORMS - Last %s\n", period)
 	fmt.Printf("⏰ Generated: %s\n", time.Now().Format("2006-01-02 15:04:05"))
 	fmt.Printf("🔗 Period: %s\n\n", getPeriodDescription(period))
@@ -98,7 +100,7 @@ func displayAllPlatformsData(platforms []string, period string, bypassCache bool
 	fmt.Printf("🚀 Fetching data from %d configured platform(s)...\n\n", len(platforms))
 
 	// Collect data from all platforms in parallel
-	results := collectPlatformDataParallel(platforms, period, bypassCache) // Pass false for bypassCache
+	results := collectPlatformDataParallel(platforms, period, bypassCache, debug) // Pass false for bypassCache
 
 	if len(results) == 0 {
 		fmt.Println("ℹ️  No data found for the specified period.")
@@ -138,7 +140,7 @@ type PlatformDataResult struct {
 }
 
 // collectPlatformDataParallel fetches data from all platforms concurrently
-func collectPlatformDataParallel(platforms []string, period string, bypassCache bool) []PlatformDataResult {
+func collectPlatformDataParallel(platforms []string, period string, bypassCache bool, debug bool) []PlatformDataResult {
 	var wg sync.WaitGroup
 	results := make([]PlatformDataResult, 0, len(platforms))
 	resultChan := make(chan PlatformDataResult, len(platforms))
@@ -160,7 +162,7 @@ func collectPlatformDataParallel(platforms []string, period string, bypassCache 
 
 			// Get detailed consumption data
 			startTime, endTime := providers.GetPeriodTimeRange(period)
-			consumptions, err := provider.GetConsumption(startTime, endTime, bypassCache)
+			consumptions, err := provider.GetConsumption(startTime, endTime, bypassCache, debug)
 			if err != nil {
 				resultChan <- PlatformDataResult{
 					platform: p,
@@ -170,7 +172,7 @@ func collectPlatformDataParallel(platforms []string, period string, bypassCache 
 			}
 
 			// Get detailed pricing data
-			pricings, err := provider.GetPricing(startTime, endTime, bypassCache)
+			pricings, err := provider.GetPricing(startTime, endTime, bypassCache, debug)
 			if err != nil {
 				resultChan <- PlatformDataResult{
 					platform: p,

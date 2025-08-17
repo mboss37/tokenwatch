@@ -12,10 +12,10 @@ type Provider interface {
 	GetPlatform() string
 
 	// GetConsumption retrieves consumption data for a specific time period
-	GetConsumption(startTime, endTime time.Time, bypassCache bool) ([]*models.Consumption, error)
+	GetConsumption(startTime, endTime time.Time, bypassCache bool, debug bool) ([]*models.Consumption, error)
 
 	// GetPricing retrieves pricing data for a specific time period
-	GetPricing(startTime, endTime time.Time, bypassCache bool) ([]*models.Pricing, error)
+	GetPricing(startTime, endTime time.Time, bypassCache bool, debug bool) ([]*models.Pricing, error)
 
 	// GetConsumptionSummary gets aggregated consumption data for common periods
 	GetConsumptionSummary(period string) (*models.ConsumptionSummary, error)

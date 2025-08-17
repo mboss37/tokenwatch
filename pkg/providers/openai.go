@@ -106,8 +106,8 @@ func (o *OpenAIProvider) ClearCache() {
 }
 
 // GetConsumption retrieves consumption data and converts to common models
-func (o *OpenAIProvider) GetConsumption(startTime, endTime time.Time, bypassCache bool) ([]*models.Consumption, error) {
-	usageResp, err := o.GetUsage(startTime, endTime, "1d", []string{"model"}, bypassCache)
+func (o *OpenAIProvider) GetConsumption(startTime, endTime time.Time, bypassCache bool, debug bool) ([]*models.Consumption, error) {
+	usageResp, err := o.GetUsage(startTime, endTime, "1d", []string{"model"}, bypassCache, debug)
 	if err != nil {
 		return nil, err
 	}
@@ -132,8 +132,8 @@ func (o *OpenAIProvider) GetConsumption(startTime, endTime time.Time, bypassCach
 }
 
 // GetPricing retrieves pricing data and converts to common models
-func (o *OpenAIProvider) GetPricing(startTime, endTime time.Time, bypassCache bool) ([]*models.Pricing, error) {
-	costResp, err := o.GetCosts(startTime, endTime, []string{"line_item"}, bypassCache)
+func (o *OpenAIProvider) GetPricing(startTime, endTime time.Time, bypassCache bool, debug bool) ([]*models.Pricing, error) {
+	costResp, err := o.GetCosts(startTime, endTime, []string{"line_item"}, bypassCache, debug)
 	if err != nil {
 		return nil, err
 	}
@@ -164,7 +164,7 @@ func (o *OpenAIProvider) GetPricing(startTime, endTime time.Time, bypassCache bo
 func (o *OpenAIProvider) GetConsumptionSummary(period string) (*models.ConsumptionSummary, error) {
 	startTime, endTime := GetPeriodTimeRange(period)
 
-	consumptions, err := o.GetConsumption(startTime, endTime, false)
+	consumptions, err := o.GetConsumption(startTime, endTime, false, false)
 	if err != nil {
 		return nil, err
 	}
@@ -193,7 +193,7 @@ func (o *OpenAIProvider) GetConsumptionSummary(period string) (*models.Consumpti
 func (o *OpenAIProvider) GetPricingSummary(period string) (*models.PricingSummary, error) {
 	startTime, endTime := GetPeriodTimeRange(period)
 
-	pricings, err := o.GetPricing(startTime, endTime, false)
+	pricings, err := o.GetPricing(startTime, endTime, false, false)
 	if err != nil {
 		return nil, err
 	}
@@ -277,7 +277,7 @@ func (o *OpenAIProvider) saveToCache(key string, data interface{}) {
 }
 
 // GetUsage retrieves token usage data from OpenAI (internal method)
-func (o *OpenAIProvider) GetUsage(startTime, endTime time.Time, bucketWidth string, groupBy []string, bypassCache bool) (*OpenAIUsageResponse, error) {
+func (o *OpenAIProvider) GetUsage(startTime, endTime time.Time, bucketWidth string, groupBy []string, bypassCache bool, debug bool) (*OpenAIUsageResponse, error) {
 	// Create cache key
 	params := map[string]string{
 		"start_time":   fmt.Sprintf("%d", startTime.Unix()),
@@ -321,13 +321,15 @@ func (o *OpenAIProvider) GetUsage(startTime, endTime time.Time, bucketWidth stri
 	}
 	req.URL.RawQuery = q.Encode()
 
-	// Log request details for debugging
-	fmt.Printf("🔍 OPENAI USAGE API REQUEST:\n")
-	fmt.Printf("   URL: %s\n", req.URL.String())
-	fmt.Printf("   Start Time: %s (%d)\n", startTime.Format("2006-01-02 15:04:05"), startTime.Unix())
-	fmt.Printf("   End Time: %s (%d)\n", endTime.Format("2006-01-02 15:04:05"), endTime.Unix())
-	fmt.Printf("   Bucket Width: %s\n", bucketWidth)
-	fmt.Printf("   Group By: %v\n\n", groupBy)
+	// Log request details for debugging (only when debug is enabled)
+	if debug {
+		fmt.Printf("🔍 OPENAI USAGE API REQUEST:\n")
+		fmt.Printf("   URL: %s\n", req.URL.String())
+		fmt.Printf("   Start Time: %s (%d)\n", startTime.Format("2006-01-02 15:04:05"), startTime.Unix())
+		fmt.Printf("   End Time: %s (%d)\n", endTime.Format("2006-01-02 15:04:05"), endTime.Unix())
+		fmt.Printf("   Bucket Width: %s\n", bucketWidth)
+		fmt.Printf("   Group By: %v\n\n", groupBy)
+	}
 
 	// Add headers
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", o.apiKey))
@@ -364,7 +366,9 @@ func (o *OpenAIProvider) GetUsage(startTime, endTime time.Time, bucketWidth stri
 
 	// Log raw response for debugging
 	rawJSON, _ := json.MarshalIndent(usageResp, "", "  ")
-	fmt.Printf("🔍 RAW OPENAI USAGE API RESPONSE:\n%s\n\n", string(rawJSON))
+	if debug {
+		fmt.Printf("🔍 RAW OPENAI USAGE API RESPONSE:\n%s\n\n", string(rawJSON))
+	}
 
 	// Cache the result
 	o.saveToCache(cacheKey, &usageResp)
@@ -373,7 +377,7 @@ func (o *OpenAIProvider) GetUsage(startTime, endTime time.Time, bucketWidth stri
 }
 
 // GetCosts retrieves cost data from OpenAI (internal method)
-func (o *OpenAIProvider) GetCosts(startTime, endTime time.Time, groupBy []string, bypassCache bool) (*OpenAICostResponse, error) {
+func (o *OpenAIProvider) GetCosts(startTime, endTime time.Time, groupBy []string, bypassCache bool, debug bool) (*OpenAICostResponse, error) {
 	// Create cache key
 	params := map[string]string{
 		"start_time":   fmt.Sprintf("%d", startTime.Unix()),
@@ -415,12 +419,14 @@ func (o *OpenAIProvider) GetCosts(startTime, endTime time.Time, groupBy []string
 	}
 	req.URL.RawQuery = q.Encode()
 
-	// Log request details for debugging
-	fmt.Printf("🔍 OPENAI COSTS API REQUEST:\n")
-	fmt.Printf("   URL: %s\n", req.URL.String())
-	fmt.Printf("   Start Time: %s (%d)\n", startTime.Format("2006-01-02 15:04:05"), startTime.Unix())
-	fmt.Printf("   End Time: %s (%d)\n", endTime.Format("2006-01-02 15:04:05"), endTime.Unix())
-	fmt.Printf("   Group By: %v\n\n", groupBy)
+	// Log request details for debugging (only when debug is enabled)
+	if debug {
+		fmt.Printf("🔍 OPENAI COSTS API REQUEST:\n")
+		fmt.Printf("   URL: %s\n", req.URL.String())
+		fmt.Printf("   Start Time: %s (%d)\n", startTime.Format("2006-01-02 15:04:05"), startTime.Unix())
+		fmt.Printf("   End Time: %s (%d)\n", endTime.Format("2006-01-02 15:04:05"), endTime.Unix())
+		fmt.Printf("   Group By: %v\n\n", groupBy)
+	}
 
 	// Add headers
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", o.apiKey))
@@ -457,7 +463,9 @@ func (o *OpenAIProvider) GetCosts(startTime, endTime time.Time, groupBy []string
 
 	// Log raw response for debugging
 	rawJSON, _ := json.MarshalIndent(costResp, "", "  ")
-	fmt.Printf("🔍 RAW OPENAI COSTS API RESPONSE:\n%s\n\n", string(rawJSON))
+	if debug {
+		fmt.Printf("🔍 RAW OPENAI COSTS API RESPONSE:\n%s\n\n", string(rawJSON))
+	}
 
 	// Cache the result
 	o.saveToCache(cacheKey, &costResp)
@@ -470,12 +478,12 @@ func (o *OpenAIProvider) GetLast7DaysUsage() (*OpenAIUsageResponse, error) {
 	endTime := time.Now()
 	startTime := endTime.AddDate(0, 0, -7)
 
-	return o.GetUsage(startTime, endTime, "1d", []string{"model"}, false)
+	return o.GetUsage(startTime, endTime, "1d", []string{"model"}, false, false)
 }
 
 func (o *OpenAIProvider) GetLast30DaysCosts() (*OpenAICostResponse, error) {
 	endTime := time.Now()
 	startTime := endTime.AddDate(0, 0, -30)
 
-	return o.GetCosts(startTime, endTime, []string{"line_item"}, false)
+	return o.GetCosts(startTime, endTime, []string{"line_item"}, false, false)
 }

@@ -81,6 +81,7 @@ Examples:
 		// Get flags
 		period, _ := cmd.Flags().GetString("period")
 		watch, _ := cmd.Flags().GetBool("watch")
+		debug, _ := cmd.Flags().GetBool("debug")
 
 		if period != "" && period != "7d" && period != "30d" && period != "90d" {
 			return fmt.Errorf("invalid period: %s. Use 7d, 30d, or 90d", period)
@@ -99,7 +100,7 @@ Examples:
 				fmt.Print("\033[H\033[2J")
 
 				// Display data with cache bypassed for fresh data
-				if err := displayOpenAIData(provider, period, true); err != nil {
+				if err := displayOpenAIData(provider, period, true, debug); err != nil {
 					fmt.Printf("❌ Error: %v\n", err)
 				}
 
@@ -111,7 +112,7 @@ Examples:
 			}
 		} else {
 			// Single run
-			return displayOpenAIData(provider, period, false)
+			return displayOpenAIData(provider, period, false, debug)
 		}
 	},
 }
@@ -119,12 +120,12 @@ Examples:
 func init() {
 	openaiCmd.Flags().StringP("period", "p", "7d", "Time period (7d, 30d, 90d)")
 	openaiCmd.Flags().BoolP("watch", "w", false, "Watch mode - refresh every 30 seconds")
-	openaiCmd.Flags().BoolP("fresh", "f", false, "Force fresh data (bypass cache)")
+	openaiCmd.Flags().BoolP("debug", "d", false, "Enable debug logging for API calls")
 	RootCmd.AddCommand(openaiCmd)
 }
 
 // displayOpenAIData fetches and displays OpenAI usage data
-func displayOpenAIData(provider *providers.OpenAIProvider, period string, bypassCache bool) error {
+func displayOpenAIData(provider *providers.OpenAIProvider, period string, bypassCache bool, debug bool) error {
 	// Display header
 	fmt.Printf("🤖 OPENAI USAGE - Last %s\n", period)
 	fmt.Printf("⏰ Generated: %s\n\n", time.Now().Format("2006-01-02 15:04:05"))
@@ -133,13 +134,13 @@ func displayOpenAIData(provider *providers.OpenAIProvider, period string, bypass
 	startTime, endTime := providers.GetPeriodTimeRange(period)
 
 	// Fetch consumption data
-	consumptions, err := provider.GetConsumption(startTime, endTime, bypassCache)
+	consumptions, err := provider.GetConsumption(startTime, endTime, bypassCache, debug)
 	if err != nil {
 		return fmt.Errorf("failed to get consumption data: %w", err)
 	}
 
 	// Fetch pricing data
-	pricings, err := provider.GetPricing(startTime, endTime, bypassCache)
+	pricings, err := provider.GetPricing(startTime, endTime, bypassCache, debug)
 	if err != nil {
 		// Don't fail if pricing data is unavailable - just log a warning
 		fmt.Printf("⚠️  Warning: Could not fetch pricing data: %v\n", err)

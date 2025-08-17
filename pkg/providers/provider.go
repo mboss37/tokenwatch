@@ -31,7 +31,6 @@ type Provider interface {
 const (
 	Period7Days  = "7d"
 	Period30Days = "30d"
-	Period90Days = "90d"
 )
 
 // GetPeriodTimeRange returns start and end times for common periods
@@ -40,14 +39,14 @@ func GetPeriodTimeRange(period string) (time.Time, time.Time) {
 	var startTime time.Time
 
 	switch period {
-	case Period7Days:
-		startTime = endTime.AddDate(0, 0, -7)
-	case Period30Days:
-		startTime = endTime.AddDate(0, 0, -30)
-	case Period90Days:
-		startTime = endTime.AddDate(0, 0, -90)
+	case "1d":
+		startTime = endTime.AddDate(0, 0, -1) // Last 24 hours
+	case "7d":
+		startTime = endTime.AddDate(0, 0, -7) // Last 7 days
+	case "30d":
+		startTime = endTime.AddDate(0, 0, -30) // Last 30 days
 	default:
-		// Default to 7 days
+		// Default to 7 days if period is not recognized
 		startTime = endTime.AddDate(0, 0, -7)
 	}
 

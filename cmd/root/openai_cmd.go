@@ -49,6 +49,12 @@ func calculateTotals(models []ModelStats) TotalStats {
 	return totals
 }
 
+var (
+	period string
+	watch  bool
+	debug  bool
+)
+
 var openaiCmd = &cobra.Command{
 	Use:   "openai",
 	Short: "Show OpenAI token consumption and costs",
@@ -62,10 +68,9 @@ This command shows:
 
 Examples:
   tokenwatch openai                # Last 7 days
+  tokenwatch openai --period 1d    # Last 24 hours
   tokenwatch openai --period 30d   # Last 30 days
-  tokenwatch openai --period 90d   # Last 90 days
-  tokenwatch openai -w             # Watch mode - refresh every 30s
-  tokenwatch openai -w -p 30d      # Watch mode with 30-day period`,
+  tokenwatch openai -w -p 1d       # Watch mode - refresh every 30s (1d only)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Load config
 		if err := config.Init(); err != nil {
@@ -79,19 +84,41 @@ Examples:
 		}
 
 		// Get flags
-		period, _ := cmd.Flags().GetString("period")
-		watch, _ := cmd.Flags().GetBool("watch")
-		debug, _ := cmd.Flags().GetBool("debug")
+		period, _ = cmd.Flags().GetString("period")
+		watch, _ = cmd.Flags().GetBool("watch")
+		debug, _ = cmd.Flags().GetBool("debug")
 
-		if period != "" && period != "7d" && period != "30d" && period != "90d" {
-			return fmt.Errorf("invalid period: %s. Use 7d, 30d, or 90d", period)
+		// Validate period
+		if period != "" && period != "1d" && period != "7d" && period != "30d" {
+			return fmt.Errorf("invalid period: %s. Valid periods are: 1d, 7d, 30d", period)
 		}
 		if period == "" {
-			period = "7d" // Default
+			period = "7d"
 		}
 
-		// Create provider
-		provider := providers.NewOpenAIProvider(apiKey, "")
+		// Validate watch mode - only allow for 1d period
+		if watch && period != "1d" {
+			return fmt.Errorf("watch mode (-w) is only available for 1-day period (--period 1d). For longer periods, use regular mode")
+		}
+
+		// Warn about 30d period limitations
+		if period == "30d" {
+			fmt.Println("⚠️  Note: 30-day period may take longer to load and may have limited data availability due to OpenAI API limitations.")
+			fmt.Println("   Consider using --period 7d for more reliable results.")
+			fmt.Println()
+		}
+
+		// Get provider
+		provider := getProvider("openai")
+		if provider == nil {
+			return fmt.Errorf("OpenAI provider not available")
+		}
+
+		// Cast provider to OpenAIProvider for displayOpenAIData
+		openaiProvider, ok := provider.(*providers.OpenAIProvider)
+		if !ok {
+			return fmt.Errorf("failed to get OpenAI provider")
+		}
 
 		// If watch mode, run in a loop
 		if watch {
@@ -100,7 +127,7 @@ Examples:
 				fmt.Print("\033[H\033[2J")
 
 				// Display data with cache bypassed for fresh data
-				if err := displayOpenAIData(provider, period, true, debug); err != nil {
+				if err := displayOpenAIData(openaiProvider, period, true, debug); err != nil {
 					fmt.Printf("❌ Error: %v\n", err)
 				}
 
@@ -112,14 +139,14 @@ Examples:
 			}
 		} else {
 			// Single run
-			return displayOpenAIData(provider, period, false, debug)
+			return displayOpenAIData(openaiProvider, period, false, debug)
 		}
 	},
 }
 
 func init() {
-	openaiCmd.Flags().StringP("period", "p", "7d", "Time period (7d, 30d, 90d)")
-	openaiCmd.Flags().BoolP("watch", "w", false, "Watch mode - refresh every 30 seconds")
+	openaiCmd.Flags().StringP("period", "p", "7d", "Time period: 1d (recent activity), 7d (historical data), 30d")
+	openaiCmd.Flags().BoolP("watch", "w", false, "Watch mode - refresh every 30 seconds (only available with --period 1d)")
 	openaiCmd.Flags().BoolP("debug", "d", false, "Enable debug logging for API calls")
 	RootCmd.AddCommand(openaiCmd)
 }
@@ -217,6 +244,9 @@ func displayOpenAIData(provider *providers.OpenAIProvider, period string, bypass
 	// Display summary
 	displayOpenAISummary(period, totals.TotalTokens, totals.TotalRequests, totals.TotalCost, startTime, endTime)
 
+	// Display smart recommendations
+	displaySmartRecommendations(period)
+
 	// Display table
 	displayOpenAITable(models, totals)
 
@@ -243,11 +273,53 @@ func displayOpenAISummary(period string, totalTokens, totalRequests int64, total
 		fmt.Printf("💰 Daily Cost Average: %s\n",
 			color.YellowString("$%.4f", totalCost/float64(days)))
 	} else {
-		if period == "30d" || period == "90d" {
+		if period == "30d" {
 			fmt.Printf("💰 Cost Data: %s\n", color.YellowString("Not available for this period"))
 		} else {
 			fmt.Printf("💰 Cost Data: %s\n", color.GreenString("Free Tier"))
 		}
+	}
+
+	fmt.Println()
+}
+
+// displaySmartRecommendations provides smart recommendations based on the selected time period
+func displaySmartRecommendations(period string) {
+	fmt.Println("💡 SMART RECOMMENDATIONS")
+	fmt.Println("─" + color.HiBlackString("─────────────────────────────────────────────────"))
+
+	switch period {
+	case "1d":
+		fmt.Println("📊 1-day period is perfect for:")
+		fmt.Println("   • Recent activity monitoring")
+		fmt.Println("   • Real-time usage tracking")
+		fmt.Println("   • Immediate cost calculations")
+		fmt.Println("   • Debugging current API calls")
+		fmt.Println()
+		fmt.Println("🔄 For historical analysis, try: --period 7d")
+
+	case "7d":
+		fmt.Println("📊 7-day period is ideal for:")
+		fmt.Println("   • Weekly usage patterns")
+		fmt.Println("   • Historical cost analysis")
+		fmt.Println("   • Model performance comparison")
+		fmt.Println("   • Budget planning")
+		fmt.Println()
+		fmt.Println("🔄 For recent activity, try: --period 1d")
+
+	case "30d":
+		fmt.Println("📊 30-day period may have limited data:")
+		fmt.Println("   • OpenAI API data availability varies")
+		fmt.Println("   • Some periods may return empty results")
+		fmt.Println("   • Consider using 7d for reliable data")
+		fmt.Println()
+		fmt.Println("🔄 For best results, try: --period 7d")
+
+	default:
+		fmt.Println("📊 For optimal results:")
+		fmt.Println("   • Use --period 1d for recent activity")
+		fmt.Println("   • Use --period 7d for historical data")
+		fmt.Println("   • 30d period may have data limitations")
 	}
 
 	fmt.Println()

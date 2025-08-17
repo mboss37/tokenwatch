@@ -29,11 +29,10 @@ This command provides a unified dashboard showing:
 • Time period analysis
 
 Examples:
-  tokenwatch all                    # Last 7 days
-  tokenwatch all --period 30d      # Last 30 days
-  tokenwatch all --period 90d      # Last 90 days
-  tokenwatch all -w                 # Watch mode - refresh every 30s
-  tokenwatch all -w -p 30d          # Watch mode with 30-day period`,
+  tokenwatch all                # Last 7 days
+  tokenwatch all --period 1d    # Last 24 hours
+  tokenwatch all --period 30d   # Last 30 days
+  tokenwatch all -w -p 1d       # Watch mode - refresh every 30s (1d only)`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Load config
 		if err := config.Init(); err != nil {
@@ -46,11 +45,23 @@ Examples:
 		debug, _ := cmd.Flags().GetBool("debug")
 
 		// Validate period
-		if period != "" && period != "7d" && period != "30d" && period != "90d" {
-			return fmt.Errorf("invalid period: %s. Use 7d, 30d, or 90d", period)
+		if period != "" && period != "1d" && period != "7d" && period != "30d" {
+			return fmt.Errorf("invalid period: %s. Valid periods are: 1d, 7d, 30d", period)
 		}
 		if period == "" {
-			period = "7d" // Default to 7 days
+			period = "7d"
+		}
+
+		// Validate watch mode - only allow for 1d period
+		if watch && period != "1d" {
+			return fmt.Errorf("watch mode (-w) is only available for 1-day period (--period 1d). For longer periods, use regular mode")
+		}
+
+		// Warn about 30d period limitations
+		if period == "30d" {
+			fmt.Println("⚠️  Note: 30-day period may take longer to load and may have limited data availability due to OpenAI API limitations.")
+			fmt.Println("   Consider using --period 7d for more reliable results.")
+			fmt.Println()
 		}
 
 		// Get available platforms
@@ -85,8 +96,8 @@ Examples:
 }
 
 func init() {
-	allCmd.Flags().StringP("period", "p", "7d", "Time period (7d, 30d, 90d)")
-	allCmd.Flags().BoolP("watch", "w", false, "Watch mode - refresh every 30 seconds")
+	allCmd.Flags().StringP("period", "p", "7d", "Time period: 1d (recent activity), 7d (historical data), 30d")
+	allCmd.Flags().BoolP("watch", "w", false, "Watch mode - refresh every 30 seconds (only available with --period 1d)")
 	allCmd.Flags().BoolP("debug", "d", false, "Enable debug mode for providers")
 	RootCmd.AddCommand(allCmd)
 }
@@ -250,12 +261,12 @@ func getProvider(platform string) providers.Provider {
 // getPeriodDescription returns a human-readable description of the period
 func getPeriodDescription(period string) string {
 	switch period {
+	case "1d":
+		return "Last 24 hours"
 	case "7d":
 		return "Last 7 days"
 	case "30d":
 		return "Last 30 days"
-	case "90d":
-		return "Last 90 days"
 	default:
 		return "Custom period"
 	}

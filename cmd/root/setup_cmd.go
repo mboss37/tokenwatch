@@ -180,8 +180,9 @@ func runSetup() error {
 	case "openai":
 		fmt.Println("🚀 You can now use these commands:")
 		fmt.Println("   • tokenwatch openai              - View usage and costs")
+		fmt.Println("   • tokenwatch openai --period 1d  - View last 24 hours")
+		fmt.Println("   • tokenwatch openai --period 7d  - View last 7 days")
 		fmt.Println("   • tokenwatch openai --period 30d - View last 30 days")
-		fmt.Println("   • tokenwatch openai --period 90d - View last 90 days")
 		fmt.Println("   • tokenwatch config check        - Verify your setup")
 	default:
 		fmt.Printf("🚧 %s is currently in development.\n", strings.Title(platform))

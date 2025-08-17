@@ -1,6 +1,7 @@
 package providers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -30,7 +31,9 @@ type cacheItem struct {
 
 // OpenAIUsageResponse represents the usage API response
 type OpenAIUsageResponse struct {
-	Data []OpenAIUsageBucket `json:"data"`
+	Data     []OpenAIUsageBucket `json:"data"`
+	HasMore  bool                `json:"has_more"`
+	NextPage string              `json:"next_page"`
 }
 
 type OpenAIUsageBucket struct {
@@ -48,7 +51,9 @@ type OpenAIUsageResult struct {
 
 // OpenAICostResponse represents the costs API response
 type OpenAICostResponse struct {
-	Data []OpenAICostBucket `json:"data"`
+	Data     []OpenAICostBucket `json:"data"`
+	HasMore  bool               `json:"has_more"`
+	NextPage string             `json:"next_page"`
 }
 
 type OpenAICostBucket struct {
@@ -276,6 +281,24 @@ func (o *OpenAIProvider) saveToCache(key string, data interface{}) {
 	}
 }
 
+// countTotalResults counts the total number of results across all buckets
+func countTotalResults(buckets []OpenAIUsageBucket) int {
+	total := 0
+	for _, bucket := range buckets {
+		total += len(bucket.Results)
+	}
+	return total
+}
+
+// countTotalCostResults counts the total number of results across all buckets for costs
+func countTotalCostResults(buckets []OpenAICostBucket) int {
+	total := 0
+	for _, bucket := range buckets {
+		total += len(bucket.Results)
+	}
+	return total
+}
+
 // GetUsage retrieves token usage data from OpenAI (internal method)
 func (o *OpenAIProvider) GetUsage(startTime, endTime time.Time, bucketWidth string, groupBy []string, bypassCache bool, debug bool) (*OpenAIUsageResponse, error) {
 	// Create cache key
@@ -297,83 +320,155 @@ func (o *OpenAIProvider) GetUsage(startTime, endTime time.Time, bucketWidth stri
 		}
 	}
 
-	// Not in cache or bypassing cache, make API request
-	url := fmt.Sprintf("%s/organization/usage/completions", o.baseURL)
+	// Not in cache or bypassing cache, make API request with pagination
+	var allData []OpenAIUsageBucket
+	var nextPage string
+	maxPages := 50 // Safety limit to prevent infinite loops
+	pageCount := 0
+	seenPages := make(map[string]bool) // Track seen pages to detect loops
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
+	for pageCount < maxPages {
+		pageCount++
 
-	// Add query parameters
-	q := req.URL.Query()
-	q.Add("start_time", fmt.Sprintf("%d", startTime.Unix()))
-	if !endTime.IsZero() {
-		q.Add("end_time", fmt.Sprintf("%d", endTime.Unix()))
-	}
-	if bucketWidth != "" {
-		q.Add("bucket_width", bucketWidth)
-	}
-	if len(groupBy) > 0 {
-		for _, group := range groupBy {
-			q.Add("group_by", group)
-		}
-	}
-	req.URL.RawQuery = q.Encode()
+		// Build URL with query parameters
+		url := fmt.Sprintf("%s/organization/usage/completions", o.baseURL)
 
-	// Log request details for debugging (only when debug is enabled)
-	if debug {
-		fmt.Printf("🔍 OPENAI USAGE API REQUEST:\n")
-		fmt.Printf("   URL: %s\n", req.URL.String())
-		fmt.Printf("   Start Time: %s (%d)\n", startTime.Format("2006-01-02 15:04:05"), startTime.Unix())
-		fmt.Printf("   End Time: %s (%d)\n", endTime.Format("2006-01-02 15:04:05"), endTime.Unix())
-		fmt.Printf("   Bucket Width: %s\n", bucketWidth)
-		fmt.Printf("   Group By: %v\n\n", groupBy)
-	}
+		// Add timeout for longer periods to prevent hanging
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
 
-	// Add headers
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", o.apiKey))
-	if o.orgID != "" {
-		req.Header.Set("OpenAI-Organization", o.orgID)
-	}
-
-	// Make request with circuit breaker
-	var resp *http.Response
-	err = o.circuitBreaker.Call(func() error {
-		var reqErr error
-		resp, reqErr = o.client.Do(req)
-		if reqErr != nil {
-			return fmt.Errorf("failed to make request: %w", reqErr)
+		// Create HTTP request with context
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create request: %w", err)
 		}
 
-		if resp.StatusCode != http.StatusOK {
-			defer resp.Body.Close()
-			return fmt.Errorf("API request failed with status: %d", resp.StatusCode)
+		// Add query parameters
+		q := req.URL.Query()
+		q.Add("start_time", fmt.Sprintf("%d", startTime.Unix()))
+		if !endTime.IsZero() {
+			q.Add("end_time", fmt.Sprintf("%d", endTime.Unix()))
 		}
-		return nil
-	})
+		if bucketWidth != "" {
+			q.Add("bucket_width", bucketWidth)
+		}
+		if len(groupBy) > 0 {
+			for _, group := range groupBy {
+				q.Add("group_by", group)
+			}
+		}
+		// Add next_page token if we have one
+		if nextPage != "" {
+			q.Add("page", nextPage)
+		}
+		req.URL.RawQuery = q.Encode()
 
-	if err != nil {
-		return nil, err
+		// Log request details for debugging (only when debug is enabled)
+		if debug {
+			fmt.Printf("🔍 OPENAI USAGE API REQUEST (Page %d, Token: %s):\n", pageCount, nextPage)
+			fmt.Printf("   URL: %s\n", req.URL.String())
+			fmt.Printf("   Start Time: %s (%d)\n", startTime.Format("2006-01-02 15:04:05"), startTime.Unix())
+			fmt.Printf("   End Time: %s (%d)\n", endTime.Format("2006-01-02 15:04:05"), endTime.Unix())
+			fmt.Printf("   Bucket Width: %s\n", bucketWidth)
+			fmt.Printf("   Group By: %v\n", groupBy)
+			if nextPage != "" {
+				fmt.Printf("   Next Page: %s\n", nextPage)
+			}
+			fmt.Println()
+		}
+
+		// Add headers
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", o.apiKey))
+		if o.orgID != "" {
+			req.Header.Set("OpenAI-Organization", o.orgID)
+		}
+
+		// Make request with circuit breaker
+		var resp *http.Response
+		err = o.circuitBreaker.Call(func() error {
+			var reqErr error
+			resp, reqErr = o.client.Do(req)
+			if reqErr != nil {
+				return fmt.Errorf("failed to make request: %w", reqErr)
+			}
+
+			if resp.StatusCode != http.StatusOK {
+				defer resp.Body.Close()
+				return fmt.Errorf("API request failed with status: %d", resp.StatusCode)
+			}
+			return nil
+		})
+
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		// Parse response
+		var usageResp OpenAIUsageResponse
+		if err := json.NewDecoder(resp.Body).Decode(&usageResp); err != nil {
+			return nil, fmt.Errorf("failed to decode response: %w", err)
+		}
+
+		// Log raw response for debugging
+		rawJSON, _ := json.MarshalIndent(usageResp, "", "  ")
+		if debug {
+			fmt.Printf("🔍 RAW OPENAI USAGE API RESPONSE (Page %d, Token: %s):\n", pageCount, nextPage)
+			fmt.Printf("   Has More: %v\n", usageResp.HasMore)
+			if usageResp.HasMore {
+				fmt.Printf("   Next Page: %s\n", usageResp.NextPage)
+			}
+			fmt.Printf("   Data Buckets: %d\n", len(usageResp.Data))
+			fmt.Printf("   Total Results: %d\n", countTotalResults(usageResp.Data))
+			fmt.Printf("%s\n\n", string(rawJSON))
+		}
+
+		// Append results to allData
+		allData = append(allData, usageResp.Data...)
+
+		// Check if there's a next page
+		if !usageResp.HasMore {
+			if debug {
+				fmt.Printf("🔍 PAGINATION COMPLETE: Fetched %d pages, %d total buckets\n",
+					pageCount, len(allData))
+			}
+			break
+		}
+
+		// Check for pagination loops
+		if usageResp.NextPage == "" {
+			if debug {
+				fmt.Printf("⚠️  WARNING: API returned has_more=true but no next_page token\n")
+			}
+			break
+		}
+
+		// Check if we've seen this page token before (loop detection)
+		if seenPages[usageResp.NextPage] {
+			if debug {
+				fmt.Printf("⚠️  WARNING: Detected pagination loop at page %d, stopping\n", pageCount)
+			}
+			break
+		}
+		seenPages[usageResp.NextPage] = true
+
+		nextPage = usageResp.NextPage
+		if debug {
+			fmt.Printf("🔍 FETCHING NEXT PAGE: %s\n\n", nextPage)
+		}
 	}
-	defer resp.Body.Close()
 
-	// Parse response
-	var usageResp OpenAIUsageResponse
-	if err := json.NewDecoder(resp.Body).Decode(&usageResp); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	// Log raw response for debugging
-	rawJSON, _ := json.MarshalIndent(usageResp, "", "  ")
-	if debug {
-		fmt.Printf("🔍 RAW OPENAI USAGE API RESPONSE:\n%s\n\n", string(rawJSON))
+	// Safety check - if we hit max pages, log a warning
+	if pageCount >= maxPages {
+		if debug {
+			fmt.Printf("⚠️  WARNING: Hit maximum page limit (%d), stopping pagination\n", maxPages)
+		}
 	}
 
 	// Cache the result
-	o.saveToCache(cacheKey, &usageResp)
+	o.saveToCache(cacheKey, &OpenAIUsageResponse{Data: allData})
 
-	return &usageResp, nil
+	return &OpenAIUsageResponse{Data: allData}, nil
 }
 
 // GetCosts retrieves cost data from OpenAI (internal method)
@@ -397,80 +492,152 @@ func (o *OpenAIProvider) GetCosts(startTime, endTime time.Time, groupBy []string
 		}
 	}
 
-	// Not in cache or bypassing cache, make API request
-	url := fmt.Sprintf("%s/organization/costs", o.baseURL)
+	// Not in cache or bypassing cache, make API request with pagination
+	var allData []OpenAICostBucket
+	var nextPage string
+	maxPages := 50 // Safety limit to prevent infinite loops
+	pageCount := 0
+	seenPages := make(map[string]bool) // Track seen pages to detect loops
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
+	for pageCount < maxPages {
+		pageCount++
 
-	// Add query parameters
-	q := req.URL.Query()
-	q.Add("start_time", fmt.Sprintf("%d", startTime.Unix()))
-	if !endTime.IsZero() {
-		q.Add("end_time", fmt.Sprintf("%d", endTime.Unix()))
-	}
-	q.Add("bucket_width", "1d") // Costs API only supports daily buckets
-	if len(groupBy) > 0 {
-		for _, group := range groupBy {
-			q.Add("group_by", group)
-		}
-	}
-	req.URL.RawQuery = q.Encode()
+		// Build URL with query parameters
+		url := fmt.Sprintf("%s/organization/costs", o.baseURL)
 
-	// Log request details for debugging (only when debug is enabled)
-	if debug {
-		fmt.Printf("🔍 OPENAI COSTS API REQUEST:\n")
-		fmt.Printf("   URL: %s\n", req.URL.String())
-		fmt.Printf("   Start Time: %s (%d)\n", startTime.Format("2006-01-02 15:04:05"), startTime.Unix())
-		fmt.Printf("   End Time: %s (%d)\n", endTime.Format("2006-01-02 15:04:05"), endTime.Unix())
-		fmt.Printf("   Group By: %v\n\n", groupBy)
-	}
+		// Add timeout for longer periods to prevent hanging
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
 
-	// Add headers
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", o.apiKey))
-	if o.orgID != "" {
-		req.Header.Set("OpenAI-Organization", o.orgID)
-	}
-
-	// Make request with circuit breaker
-	var resp *http.Response
-	err = o.circuitBreaker.Call(func() error {
-		var reqErr error
-		resp, reqErr = o.client.Do(req)
-		if reqErr != nil {
-			return fmt.Errorf("failed to make request: %w", reqErr)
+		// Create HTTP request with context
+		req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create request: %w", err)
 		}
 
-		if resp.StatusCode != http.StatusOK {
-			defer resp.Body.Close()
-			return fmt.Errorf("API request failed with status: %d", resp.StatusCode)
+		// Add query parameters
+		q := req.URL.Query()
+		q.Add("start_time", fmt.Sprintf("%d", startTime.Unix()))
+		if !endTime.IsZero() {
+			q.Add("end_time", fmt.Sprintf("%d", endTime.Unix()))
 		}
-		return nil
-	})
+		q.Add("bucket_width", "1d") // Costs API only supports daily buckets
+		if len(groupBy) > 0 {
+			for _, group := range groupBy {
+				q.Add("group_by", group)
+			}
+		}
+		// Add next_page token if we have one
+		if nextPage != "" {
+			q.Add("page", nextPage)
+		}
+		req.URL.RawQuery = q.Encode()
 
-	if err != nil {
-		return nil, err
+		// Log request details for debugging (only when debug is enabled)
+		if debug {
+			fmt.Printf("🔍 OPENAI COSTS API REQUEST (Page %d, Token: %s):\n", pageCount, nextPage)
+			fmt.Printf("   URL: %s\n", req.URL.String())
+			fmt.Printf("   Start Time: %s (%d)\n", startTime.Format("2006-01-02 15:04:05"), startTime.Unix())
+			fmt.Printf("   End Time: %s (%d)\n", endTime.Format("2006-01-02 15:04:05"), endTime.Unix())
+			fmt.Printf("   Group By: %v\n", groupBy)
+			if nextPage != "" {
+				fmt.Printf("   Next Page: %s\n", nextPage)
+			}
+			fmt.Println()
+		}
+
+		// Add headers
+		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", o.apiKey))
+		if o.orgID != "" {
+			req.Header.Set("OpenAI-Organization", o.orgID)
+		}
+
+		// Make request with circuit breaker
+		var resp *http.Response
+		err = o.circuitBreaker.Call(func() error {
+			var reqErr error
+			resp, reqErr = o.client.Do(req)
+			if reqErr != nil {
+				return fmt.Errorf("failed to make request: %w", reqErr)
+			}
+
+			if resp.StatusCode != http.StatusOK {
+				defer resp.Body.Close()
+				return fmt.Errorf("API request failed with status: %d", resp.StatusCode)
+			}
+			return nil
+		})
+
+		if err != nil {
+			return nil, err
+		}
+		defer resp.Body.Close()
+
+		// Parse response
+		var costResp OpenAICostResponse
+		if err := json.NewDecoder(resp.Body).Decode(&costResp); err != nil {
+			return nil, fmt.Errorf("failed to decode response: %w", err)
+		}
+
+		// Log raw response for debugging
+		rawJSON, _ := json.MarshalIndent(costResp, "", "  ")
+		if debug {
+			fmt.Printf("🔍 RAW OPENAI COSTS API RESPONSE (Page %d, Token: %s):\n", pageCount, nextPage)
+			fmt.Printf("   Has More: %v\n", costResp.HasMore)
+			if costResp.HasMore {
+				fmt.Printf("   Next Page: %s\n", costResp.NextPage)
+			}
+			fmt.Printf("   Data Buckets: %d\n", len(costResp.Data))
+			fmt.Printf("   Total Results: %d\n", countTotalCostResults(costResp.Data))
+			fmt.Printf("%s\n\n", string(rawJSON))
+		}
+
+		// Append results to allData
+		allData = append(allData, costResp.Data...)
+
+		// Check if there's a next page
+		if !costResp.HasMore {
+			if debug {
+				fmt.Printf("🔍 PAGINATION COMPLETE: Fetched %d pages, %d total buckets\n",
+					pageCount, len(allData))
+			}
+			break
+		}
+
+		// Check for pagination loops
+		if costResp.NextPage == "" {
+			if debug {
+				fmt.Printf("⚠️  WARNING: API returned has_more=true but no next_page token\n")
+			}
+			break
+		}
+
+		// Check if we've seen this page token before (loop detection)
+		if seenPages[costResp.NextPage] {
+			if debug {
+				fmt.Printf("⚠️  WARNING: Detected pagination loop at page %d, stopping\n", pageCount)
+			}
+			break
+		}
+		seenPages[costResp.NextPage] = true
+
+		nextPage = costResp.NextPage
+		if debug {
+			fmt.Printf("🔍 FETCHING NEXT PAGE: %s\n\n", nextPage)
+		}
 	}
-	defer resp.Body.Close()
 
-	// Parse response
-	var costResp OpenAICostResponse
-	if err := json.NewDecoder(resp.Body).Decode(&costResp); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
-	}
-
-	// Log raw response for debugging
-	rawJSON, _ := json.MarshalIndent(costResp, "", "  ")
-	if debug {
-		fmt.Printf("🔍 RAW OPENAI COSTS API RESPONSE:\n%s\n\n", string(rawJSON))
+	// Safety check - if we hit max pages, log a warning
+	if pageCount >= maxPages {
+		if debug {
+			fmt.Printf("⚠️  WARNING: Hit maximum page limit (%d), stopping pagination\n", maxPages)
+		}
 	}
 
 	// Cache the result
-	o.saveToCache(cacheKey, &costResp)
+	o.saveToCache(cacheKey, &OpenAICostResponse{Data: allData})
 
-	return &costResp, nil
+	return &OpenAICostResponse{Data: allData}, nil
 }
 
 // Legacy methods for backward compatibility

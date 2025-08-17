@@ -54,6 +54,7 @@ coverage.html
 
 # Binary
 tokenwatch
+root
 
 # Local data directory
 .tokenwatch/

@@ -67,19 +67,6 @@ var checkCmd = &cobra.Command{
 	},
 }
 
-var reloadCmd = &cobra.Command{
-	Use:   "reload",
-	Short: "Reload configuration from file",
-	Long:  `Reload configuration from the config file without restarting.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		if err := config.Init(); err != nil {
-			return fmt.Errorf("failed to reload config: %w", err)
-		}
-		fmt.Println("✅ Configuration reloaded successfully")
-		return nil
-	},
-}
-
 var resetCmd = &cobra.Command{
 	Use:   "reset [key]",
 	Short: "Reset configuration to defaults",
@@ -132,7 +119,6 @@ Examples:
 
 func init() {
 	configCmd.AddCommand(checkCmd)
-	configCmd.AddCommand(reloadCmd)
 	configCmd.AddCommand(resetCmd)
 	RootCmd.AddCommand(configCmd)
 }

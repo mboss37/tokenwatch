@@ -20,11 +20,6 @@ func Init() error {
 	configDir := filepath.Join(os.Getenv("HOME"), ".tokenwatch")
 	configPath := filepath.Join(configDir, "config.yaml")
 
-	// Check for custom path via env
-	if customPath := os.Getenv("TOKENWATCH_CONFIG_PATH"); customPath != "" {
-		configPath = customPath
-	}
-
 	// Create dir if not exists
 	if err := os.MkdirAll(filepath.Dir(configPath), 0700); err != nil {
 		return fmt.Errorf("failed to create config dir: %w", err)

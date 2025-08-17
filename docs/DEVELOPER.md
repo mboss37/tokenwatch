@@ -403,7 +403,7 @@ export TOKENWATCH_LOG_LEVEL=debug
 
 - **GitHub Issues**: Report bugs and request features
 - **GitHub Discussions**: Ask questions and share ideas
-- **Documentation**: Check this guide and user README
+- **Documentation**: Check this guide and [User Guide](USER_GUIDE.md)
 - **Code**: Review the source code for examples
 
 For more information, visit the [GitHub repository](https://github.com/mboss37/tokenwatch).

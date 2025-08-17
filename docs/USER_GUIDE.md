@@ -139,8 +139,10 @@ This will:
 Watch mode provides real-time monitoring of your OpenAI usage with automatic refresh every 30 seconds:
 
 ```bash
-# Watch OpenAI usage (1-day period only)
-./tokenwatch usage -w -p 1d
+# Watch OpenAI usage with any period
+./tokenwatch usage -w -p 1d       # Watch 1-day period
+./tokenwatch usage -w -p 7d       # Watch 7-day period
+./tokenwatch usage -w -p 30d      # Watch 30-day period
 
 # Stop watching: Press Ctrl+C
 ```
@@ -149,10 +151,10 @@ Watch mode provides real-time monitoring of your OpenAI usage with automatic ref
 - **Auto-refresh**: Updates every 30 seconds
 - **Screen clearing**: Clean display on each refresh
 - **Fresh data**: Bypasses cache for real-time information
-- **1-day only**: Watch mode is only available for recent activity
+- **Any period**: Watch mode works with all time periods
 - **Easy exit**: Ctrl+C to stop
 
-**Note**: Watch mode is only available for 1-day periods since longer periods don't need real-time updates.
+**Note**: Watch mode works with all periods, though it's most useful for shorter periods (1d, 7d) for real-time monitoring.
 
 ## Debug Mode
 

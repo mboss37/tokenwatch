@@ -83,9 +83,10 @@ This command shows:
 
 Examples:
   tokenwatch usage                # Last 7 days
-  tokenwatch usage --period 1d    # Last 24 hours
-  tokenwatch usage --period 30d   # Last 30 days
-  tokenwatch usage -w -p 1d       # Watch mode - refresh every 30s (1d only)`,
+  	tokenwatch usage --period 1d    # Last 24 hours
+	tokenwatch usage --period 30d   # Last 30 days
+	tokenwatch usage -w -p 1d       # Watch mode - refresh every 30s
+	tokenwatch usage -w -p 7d       # Watch mode with 7-day period`,
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Load config
 		if err := config.Init(); err != nil {
@@ -112,9 +113,9 @@ Examples:
 		}
 
 		// Validate watch mode - only allow for 1d period
-		if watch && period != "1d" {
-			return fmt.Errorf("watch mode (-w) is only available for 1-day period (--period 1d). For longer periods, use regular mode")
-		}
+		//if watch && period != "1d" {
+		// return fmt.Errorf("watch mode (-w) is only available for 1-day period (--period 1d). For longer periods, use regular mode")
+		// }
 
 		// Warn about 30d period limitations
 		if period == "30d" {
@@ -161,7 +162,7 @@ Examples:
 
 func init() {
 	usageCmd.Flags().StringP("period", "p", "7d", "Time period: 1d (recent activity), 7d (historical data), 30d")
-	usageCmd.Flags().BoolP("watch", "w", false, "Watch mode - refresh every 30 seconds (only available with --period 1d)")
+	usageCmd.Flags().BoolP("watch", "w", false, "Watch mode - refresh every 30 seconds")
 	usageCmd.Flags().BoolP("debug", "d", false, "Enable debug logging for API calls")
 	RootCmd.AddCommand(usageCmd)
 }

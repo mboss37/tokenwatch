@@ -31,6 +31,7 @@ go build -o tokenwatch ./cmd/root
 ./tokenwatch usage                    # Last 7 days
 ./tokenwatch usage --period 1d       # Last 24 hours
 ./tokenwatch usage -w -p 1d          # Watch mode for real-time updates
+./tokenwatch usage -w -p 7d          # Watch mode with 7-day period
 ```
 
 ## 📖 What It Does
@@ -134,8 +135,9 @@ tokenwatch usage -w -p 1d          # Watch mode for real-time updates
 ./tokenwatch usage --period 7d       # Last 7 days (default)
 ./tokenwatch usage --period 30d      # Last 30 days
 
-# Watch mode (1-day period only)
+# Watch mode (works with all periods)
 ./tokenwatch usage -w -p 1d          # Real-time updates
+./tokenwatch usage -w -p 7d          # Watch 7-day period
 
 # Debug mode
 ./tokenwatch usage --debug            # API request/response logging

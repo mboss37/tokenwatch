@@ -19,19 +19,14 @@ A simple and focused CLI tool for monitoring OpenAI token usage and costs with r
 ## 🚀 Quick Start
 
 ```bash
-# Clone and build
-git clone https://github.com/mboss37/tokenwatch.git
-cd tokenwatch
-go build -o tokenwatch ./cmd/root
+# 1. Install TokenWatch (choose method below)
+# 2. Setup your OpenAI API key
+tokenwatch setup
 
-# Setup your OpenAI API key
-./tokenwatch setup
-
-# Start monitoring
-./tokenwatch usage                    # Last 7 days
-./tokenwatch usage --period 1d       # Last 24 hours
-./tokenwatch usage -w -p 1d          # Watch mode for real-time updates
-./tokenwatch usage -w -p 7d          # Watch mode with 7-day period
+# 3. Start monitoring
+tokenwatch usage                    # Last 7 days
+tokenwatch usage --period 1d       # Last 24 hours
+tokenwatch usage -w -p 1d          # Watch mode for real-time updates
 ```
 
 ## 📖 What It Does
@@ -46,9 +41,10 @@ TokenWatch CLI provides comprehensive monitoring of your OpenAI API usage:
 
 ## 🛠️ Installation
 
-### Download Pre-built Binary (Recommended for Users)
+### Option 1: Download Pre-built Binary (Recommended for Users)
 
-#### **Quick Install**
+**This is the easiest way to get started - no Go installation required!**
+
 1. **Go to [Releases](https://github.com/mboss37/tokenwatch/releases)**
 2. **Download v0.1.0** for your platform:
    - **Linux (x64)**: `tokenwatch-linux-amd64`
@@ -58,53 +54,97 @@ TokenWatch CLI provides comprehensive monitoring of your OpenAI API usage:
    - **Windows**: `tokenwatch-windows-amd64.exe`
 
 #### **Install Commands**
+
+**Linux/macOS:**
 ```bash
-# Download and install (Linux/macOS)
+# Download the binary
 wget https://github.com/mboss37/tokenwatch/releases/download/v0.1.0/tokenwatch-linux-amd64
+
+# Make it executable
 chmod +x tokenwatch-linux-amd64
+
+# Move to a directory in your PATH
 sudo mv tokenwatch-linux-amd64 /usr/local/bin/tokenwatch
 
 # Test installation
 tokenwatch --version
 ```
 
-### Install via Go (If you have Go installed)
+**Windows:**
+```cmd
+# Download the .exe file and place it in a directory in your PATH
+# Or run it directly from the download location
+```
+
+### Option 2: Install via Go (If you already have Go installed)
+
+**Requires Go 1.21+ to be installed on your system**
 
 ```bash
-# Install the specific version
+# Install directly from GitHub
 go install github.com/mboss37/tokenwatch/cmd/root@v0.1.0
 
-# Add to PATH if needed
+# The binary will be installed to $HOME/go/bin/
+# Add to PATH if it's not already there:
 export PATH="$HOME/go/bin:$PATH"
 
 # Test installation
 tokenwatch --version
 ```
 
-### Build from Source (For Developers)
+### Option 3: Build from Source (For Developers)
+
+**Requires Go 1.21+ and git**
 
 ```bash
+# Clone the repository
 git clone https://github.com/mboss37/tokenwatch.git
 cd tokenwatch
+
+# Checkout the specific version
 git checkout v0.1.0
+
+# Build the binary
 go build -o tokenwatch ./cmd/root
+
+# Make it executable
 chmod +x tokenwatch
+
+# Test the build
 ./tokenwatch --help
+
+# Optionally install it
+go install ./cmd/root
 ```
 
-### Using Makefile
+### Option 4: Using Makefile (For Developers)
+
+**Requires Go 1.21+ and make**
 
 ```bash
-make build      # Build only
-make build-all  # Build for all platforms
-make install    # Install locally
+# Clone the repository
+git clone https://github.com/mboss37/tokenwatch.git
+cd tokenwatch
+
+# Build for your platform
+make build
+
+# Build for all platforms
+make build-all
+
+# Install locally
+make install
 ```
 
 ## 🔧 Setup
 
-### Quick Start
+### Requirements
+- **OpenAI Admin API key** with `api.usage.read` scope
+- **Organization-level access** (personal API keys won't work)
+
+### First Time Setup
 ```bash
-# 1. Install (choose method above)
+# 1. Install TokenWatch using one of the methods above
 # 2. Setup your API key
 tokenwatch setup
 
@@ -113,11 +153,6 @@ tokenwatch usage                    # Last 7 days
 tokenwatch usage --period 1d       # Last 24 hours
 tokenwatch usage -w -p 1d          # Watch mode for real-time updates
 ```
-
-### Requirements
-- **OpenAI Admin API key** with `api.usage.read` scope
-- **Organization-level access** (personal API keys won't work)
-- **Go 1.21+** (only if building from source)
 
 ## 📚 Documentation
 
@@ -128,19 +163,19 @@ tokenwatch usage -w -p 1d          # Watch mode for real-time updates
 
 ```bash
 # View OpenAI usage (last 7 days)
-./tokenwatch usage
+tokenwatch usage
 
 # Specify time period
-./tokenwatch usage --period 1d       # Last 24 hours
-./tokenwatch usage --period 7d       # Last 7 days (default)
-./tokenwatch usage --period 30d      # Last 30 days
+tokenwatch usage --period 1d       # Last 24 hours
+tokenwatch usage --period 7d       # Last 7 days (default)
+tokenwatch usage --period 30d      # Last 30 days
 
 # Watch mode (works with all periods)
-./tokenwatch usage -w -p 1d          # Real-time updates
-./tokenwatch usage -w -p 7d          # Watch 7-day period
+tokenwatch usage -w -p 1d          # Real-time updates
+tokenwatch usage -w -p 7d          # Watch 7-day period
 
 # Debug mode
-./tokenwatch usage --debug            # API request/response logging
+tokenwatch usage --debug            # API request/response logging
 ```
 
 ## 🏗️ Architecture

@@ -58,7 +58,7 @@ TokenWatch CLI provides comprehensive monitoring of your OpenAI API usage:
 **Linux/macOS:**
 ```bash
 # Download the binary
-wget https://github.com/mboss37/tokenwatch/releases/download/v0.1.0/tokenwatch-linux-amd64
+wget https://github.com/mboss37/tokenwatch/releases/download/v0.1.3/tokenwatch-linux-amd64
 
 # Make it executable
 chmod +x tokenwatch-linux-amd64
@@ -177,6 +177,14 @@ tokenwatch usage -w -p 7d          # Watch 7-day period
 # Debug mode
 tokenwatch usage --debug            # API request/response logging
 ```
+
+### 📊 Example Output
+
+Here's what TokenWatch output looks like when monitoring your OpenAI usage:
+
+![TokenWatch Usage Example](docs/images/tokenwatch-usage-example.png)
+
+*Screenshot showing TokenWatch CLI displaying OpenAI usage statistics with a detailed breakdown of token consumption, costs, and model-specific data over a 30-day period.*
 
 ## 🏗️ Architecture
 
